@@ -7,3 +7,4 @@ tupla = (1, 2, 3, 4, 5)
 dicionario = {
     "chave1": "valor1"
 }
+set = {1, 2, 3, 4, 5}
