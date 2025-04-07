@@ -5,3 +5,4 @@ for i in range(10):
     data_model.append(i)
     print(data_model[i])
     
+print (str(123))
