@@ -16,7 +16,7 @@ elif 35 <= imc <= 39.9:
 elif 40 <= imc:
     result = 'Obesidade grau III'
 
-print('Seu IMC é: ', result)
+print('Seu IMC é: ' + str(imc) + ', ' +  result)
     
      
 
