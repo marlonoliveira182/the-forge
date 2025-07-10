@@ -40,7 +40,7 @@ def extract_paths_from_xsd(filepath, keep_case=False):
         field_name = get_name(name)
         new_path = field_name if is_root else (f'{path}.{field_name}' if path else field_name)
         if not is_root:
-            paths.append(new_path)
+        paths.append(new_path)
         typ = element.get('type', '')
         complex_type = element.find('xs:complexType', ns)
         if typ in complex_types:
@@ -192,13 +192,13 @@ def extract_fields_from_xsd(filepath, keep_case=False):
         card = f"{min_occurs}..{max_occurs}" if min_occurs != max_occurs else min_occurs
         typ, details = get_type_and_details(element)
         if not omit_root:
-            fields.append({
-                'levels': lvls,
-                'Type': typ,
-                'Description': desc,
-                'Cardinality': card,
-                'Details': details
-            })
+        fields.append({
+            'levels': lvls,
+            'Type': typ,
+            'Description': desc,
+            'Cardinality': card,
+            'Details': details
+        })
         typ_ref = element.get('type', '')
         complex_type = element.find('xs:complexType', ns)
         if typ_ref in complex_types:

@@ -1221,7 +1221,7 @@ def main():
             out_dir = out_dir_var.get()
             if not src_path or not out_dir:
                 messagebox.showerror("Error", "Please select both the XSD file and output directory.")
-                return
+        return
             try:
                 run_xsd_to_jsonschema_operation(src_path, out_dir)
                 messagebox.showinfo("Success", f"JSON Schema file generated in:\n{out_dir}")
