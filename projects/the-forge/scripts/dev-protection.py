@@ -52,8 +52,18 @@ class DevProtection:
                 status = line[:2]
                 file_path = line[3:]
                 
+                # Allow changes in dev/, scripts/ (anywhere in path), and documentation files
+                allowed_prefixes = ['dev/', 'scripts/']
+                allowed_docs_ext = ('.md', '.rst', '.txt')
+                if (
+                    any(file_path.startswith(prefix) for prefix in allowed_prefixes)
+                    or '/scripts/' in file_path.replace('\\', '/')
+                    or file_path.lower().endswith(allowed_docs_ext)
+                ):
+                    continue
+                    
                 # Skip if file is in dev directory
-                if file_path.startswith('dev/'):
+                if file_path.startswith('dev/') or 'dev/' in file_path:
                     continue
                     
                 # Check if it's a tracked file that's been modified
@@ -127,17 +137,28 @@ class DevProtection:
             print(f"Error promoting to archive: {e}")
             return False
     
+    def get_git_root(self):
+        """Find the root of the git repository."""
+        current = self.project_root.resolve()
+        while current != current.parent:
+            if (current / '.git').is_dir():
+                return current
+            current = current.parent
+        raise RuntimeError('Could not find .git directory in any parent folder.')
+
     def setup_git_hooks(self) -> bool:
         """
         Set up git hooks to enforce dev-only changes.
         """
-        hooks_dir = self.project_root / ".git" / "hooks"
-        pre_commit_hook = hooks_dir / "pre-commit"
-        
-        hook_content = '''#!/bin/sh
+        try:
+            git_root = self.get_git_root()
+            hooks_dir = git_root / ".git" / "hooks"
+            pre_commit_hook = hooks_dir / "pre-commit"
+
+            hook_content = '''#!/bin/sh
 # Pre-commit hook to enforce dev-only changes
 
-python scripts/dev-protection.py --check
+python projects/the-forge/scripts/dev-protection.py --check
 
 if [ $? -ne 0 ]; then
     echo "ERROR: Changes detected outside dev/ directory!"
@@ -145,16 +166,15 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 '''
-        
-        try:
+
             with open(pre_commit_hook, "w") as f:
                 f.write(hook_content)
-            
+
             # Make executable
             os.chmod(pre_commit_hook, 0o755)
-            print("Git hooks installed successfully")
+            print(f"Git hooks installed successfully at {pre_commit_hook}")
             return True
-            
+
         except Exception as e:
             print(f"Error setting up git hooks: {e}")
             return False
