@@ -1,0 +1,8 @@
+# Mark stable directories as read-only
+archive/* -text
+pre/* -text  
+prd/* -text
+
+# Allow development in dev directory
+dev/* text
+scripts/* text
