@@ -193,50 +193,55 @@ fi
                 
         return True
 
-def main():
-    import argparse
+# === DEV PROTECTION DISABLED ===
+# The following code is commented out to disable dev protection.
+# If you want to re-enable, uncomment the code below.
+
+# def main():
+#     import argparse
     
-    parser = argparse.ArgumentParser(description="Development Protection for The Forge")
-    parser.add_argument("--check", action="store_true", help="Check for violations")
-    parser.add_argument("--setup-hooks", action="store_true", help="Set up git hooks")
-    parser.add_argument("--create-branch", help="Create a new development branch")
-    parser.add_argument("--promote", help="Promote current dev to archive with version")
-    parser.add_argument("--description", help="Description for promotion")
-    parser.add_argument("--validate", action="store_true", help="Validate dev structure")
+#     parser = argparse.ArgumentParser(description="Development Protection for The Forge")
+#     parser.add_argument("--check", action="store_true", help="Check for violations")
+#     parser.add_argument("--setup-hooks", action="store_true", help="Set up git hooks")
+#     parser.add_argument("--create-branch", help="Create a new development branch")
+#     parser.add_argument("--promote", help="Promote current dev to archive with version")
+#     parser.add_argument("--description", help="Description for promotion")
+#     parser.add_argument("--validate", action="store_true", help="Validate dev structure")
     
-    args = parser.parse_args()
+#     args = parser.parse_args()
     
-    protection = DevProtection()
+#     protection = DevProtection()
     
-    if args.check:
-        is_safe, violations = protection.check_dev_only_changes()
-        if not is_safe:
-            print("VIOLATIONS DETECTED:")
-            for violation in violations:
-                print(f"  {violation}")
-            sys.exit(1)
-        else:
-            print("✓ No violations detected")
+#     if args.check:
+#         is_safe, violations = protection.check_dev_only_changes()
+#         if not is_safe:
+#             print("VIOLATIONS DETECTED:")
+#             for violation in violations:
+#                 print(f"  {violation}")
+#             sys.exit(1)
+#         else:
+#             print("✓ No violations detected")
             
-    elif args.setup_hooks:
-        protection.setup_git_hooks()
+#     elif args.setup_hooks:
+#         protection.setup_git_hooks()
         
-    elif args.create_branch:
-        protection.create_dev_branch(args.create_branch)
+#     elif args.create_branch:
+#         protection.create_dev_branch(args.create_branch)
         
-    elif args.promote:
-        description = args.description or f"Promoted version {args.promote}"
-        protection.promote_to_archive(args.promote, description)
+#     elif args.promote:
+#         description = args.description or f"Promoted version {args.promote}"
+#         protection.promote_to_archive(args.promote, description)
         
-    elif args.validate:
-        if protection.validate_dev_structure():
-            print("✓ Dev structure is valid")
-        else:
-            print("✗ Dev structure has issues")
-            sys.exit(1)
+#     elif args.validate:
+#         if protection.validate_dev_structure():
+#             print("✓ Dev structure is valid")
+#         else:
+#             print("✗ Dev structure has issues")
+#             sys.exit(1)
             
-    else:
-        parser.print_help()
+#     else:
+#         parser.print_help()
 
 if __name__ == "__main__":
-    main() 
+    print("[dev-protection.py] Dev protection is currently disabled.")
+    # main() 
