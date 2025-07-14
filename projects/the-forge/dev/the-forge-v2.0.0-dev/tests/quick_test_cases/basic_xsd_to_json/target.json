@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Person",
+  "type": "object",
+  "properties": {
+    "Name": {
+      "type": "string",
+      "description": "Person's full name"
+    },
+    "Age": {
+      "type": "integer",
+      "description": "Person's age"
+    },
+    "Email": {
+      "type": "string",
+      "format": "email",
+      "description": "Person's email address"
+    },
+    "Addresses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Street": {
+            "type": "string",
+            "description": "Street address"
+          },
+          "City": {
+            "type": "string",
+            "description": "City name"
+          },
+          "Country": {
+            "type": "string",
+            "description": "Country name"
+          }
+        },
+        "required": ["Street", "City", "Country"]
+      }
+    }
+  },
+  "required": ["Name", "Age"]
+} 

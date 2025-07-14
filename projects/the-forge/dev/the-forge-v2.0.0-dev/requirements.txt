@@ -1,0 +1,35 @@
+# Core dependencies
+openpyxl>=3.1.0
+Pillow>=9.0.0
+lxml>=4.9.0
+xmlschema>=2.0.0
+jsonschema>=4.17.0
+pydantic>=2.0.0
+
+# Desktop GUI framework
+PySide6>=6.5.0
+
+# Excel and data processing
+pandas>=2.0.0
+
+# Schema processing and validation
+xmlschema>=2.0.0
+jsonschema>=4.17.0
+
+# Optional dependencies for enhanced functionality
+python-Levenshtein>=0.20.0
+
+# Development and testing dependencies
+pytest>=7.0.0
+pytest-cov>=4.0.0
+black>=22.0.0
+flake8>=5.0.0
+mypy>=1.0.0
+
+# Packaging and distribution
+PyInstaller>=5.13.0
+cx-Freeze>=6.15.0
+
+# Documentation
+sphinx>=5.0.0
+sphinx-rtd-theme>=1.0.0 
