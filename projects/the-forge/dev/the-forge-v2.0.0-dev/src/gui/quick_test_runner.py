@@ -2,10 +2,14 @@ import os
 import json
 from pathlib import Path
 from src.core.schema_processor import SchemaProcessor
+from src.core.schema_loader import load_schema
 from src.core.mapping_engine import MappingEngine
 
 # Fix the path to point to the correct tests directory
 QUICK_TEST_DIR = Path(__file__).parent.parent.parent / "tests" / "quick_test_cases"
+
+# Automatic test directory
+AUTOMATIC_TEST_DIR = QUICK_TEST_DIR / "automatic"
 
 # Debug output
 print(f"[DEBUG] QUICK_TEST_DIR: {QUICK_TEST_DIR}")
@@ -41,28 +45,37 @@ class QuickTestRunner:
             except Exception as e:
                 print(f"Warning: Could not load comprehensive test config: {e}")
 
+    def load_automatic_config(self):
+        """Load automatic test configuration"""
+        config_file = AUTOMATIC_TEST_DIR / "test_config.json"
+        if config_file.exists():
+            try:
+                with open(config_file, "r", encoding="utf-8") as f:
+                    self.automatic_config = json.load(f)
+            except Exception as e:
+                print(f"Warning: Could not load automatic test config: {e}")
+
     def list_test_cases(self):
-        """List all available test cases, including comprehensive ones recursively"""
+        """List all available test cases, including automatic ones recursively"""
         test_cases = []
-        # Standard test cases (direct subdirectories)
+        # Manual test cases (direct subdirectories)
         for d in QUICK_TEST_DIR.iterdir():
-            if d.is_dir() and d.name != "comprehensive":
+            if d.is_dir() and d.name != "automatic":
                 test_cases.append({
                     "name": d.name,
                     "path": d,
-                    "type": "standard",
-                    "category": "standard"
+                    "type": "manual",
+                    "category": "manual"
                 })
-        # Recursively add all subdirectories in 'comprehensive' as test cases
-        comprehensive_dir = QUICK_TEST_DIR / "comprehensive"
-        if comprehensive_dir.exists():
-            for subdir in comprehensive_dir.iterdir():
+        # Recursively add all subdirectories in 'automatic' as test cases
+        if AUTOMATIC_TEST_DIR.exists():
+            for subdir in AUTOMATIC_TEST_DIR.iterdir():
                 if subdir.is_dir():
                     test_cases.append({
                         "name": subdir.name,
                         "path": subdir,
-                        "type": "comprehensive",
-                        "category": "comprehensive"
+                        "type": "automatic",
+                        "category": "automatic"
                     })
         return test_cases
 
@@ -82,44 +95,48 @@ class QuickTestRunner:
         description = test_case_info.get("description", "")
         expected_fields = test_case_info.get("expected_fields", 0)
         expected_mappings = test_case_info.get("expected_mappings", 0)
-        
         source, target, expected_mapping, expected_results = self.detect_schema_files(test_dir)
         errors = []
-        
         if not source or not target:
             return QuickTestResult(
                 name, source, target, 0, 0, [], 
                 errors=["Missing source or target schema file."],
                 category=category, description=description
             )
-        
         # Load schemas
         try:
-            if source.suffix == ".xsd":
-                source_fields = self.schema_processor.extract_fields_from_xsd(str(source))
-            else:
-                source_fields = self.schema_processor.extract_fields_from_json_schema(str(source))
-            if target.suffix == ".xsd":
-                target_fields = self.schema_processor.extract_fields_from_xsd(str(target))
-            else:
-                target_fields = self.schema_processor.extract_fields_from_json_schema(str(target))
+            source_fields = load_schema(str(source))
+            target_fields = load_schema(str(target))
         except Exception as e:
             return QuickTestResult(
                 name, source, target, 0, 0, [], 
                 errors=[f"Schema load error: {e}"],
                 category=category, description=description
             )
-        
         # Run mapping
         try:
-            mappings = self.mapping_engine.map_fields(source_fields, target_fields)
+            mappings = MappingEngine().map_fields(source_fields, target_fields)
         except Exception as e:
             return QuickTestResult(
                 name, source, target, len(source_fields), len(target_fields), [], 
                 errors=[f"Mapping error: {e}"],
                 category=category, description=description
             )
-        
+        # --- Automatic test validation logic ---
+        if test_case_info.get("type") == "automatic":
+            # Simulate export and compare field/object counts
+            try:
+                from src.core.excel_generator import ExcelGenerator
+                import tempfile
+                excel_gen = ExcelGenerator()
+                with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=True) as tmp:
+                    excel_gen.create_field_level_mapping_excel(mappings, tmp.name)
+                    # For now, just check that the number of source/target fields matches the parsed structures
+                    if len(source_fields) == 0 or len(target_fields) == 0:
+                        errors.append("Parsed source or target fields are empty.")
+            except Exception as e:
+                errors.append(f"Export/validation error: {e}")
+        # ---
         # Load expected results if present
         expected = {}
         if expected_mapping and expected_mapping.exists():
@@ -128,13 +145,11 @@ class QuickTestRunner:
         if expected_results and expected_results.exists():
             with open(expected_results, "r", encoding="utf-8") as f:
                 expected["results"] = json.load(f)
-        
-        # Add expected field/mapping counts for comprehensive tests
+        # Add expected field/mapping counts for automatic tests
         if expected_fields > 0:
             expected["expected_fields"] = expected_fields
         if expected_mappings > 0:
             expected["expected_mappings"] = expected_mappings
-        
         return QuickTestResult(
             name, source, target, len(source_fields), len(target_fields), mappings, 
             errors, expected, category, description

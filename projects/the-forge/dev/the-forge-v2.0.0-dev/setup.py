@@ -51,7 +51,7 @@ setup(
             "mypy>=1.0.0",
         ],
         "gui": [
-            "PySide6>=6.5.0",
+            # 'tkinter',  # Removed, as it is not installable via pip
         ],
         "docs": [
             "sphinx>=5.0.0",

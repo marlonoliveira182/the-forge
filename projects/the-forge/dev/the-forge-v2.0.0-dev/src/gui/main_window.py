@@ -24,9 +24,11 @@ from PySide6.QtCore import Qt, QThread, Signal, QTimer, QSize, QMimeData, QObjec
 from core.schema_processor import SchemaProcessor, SchemaField
 from core.mapping_engine import MappingEngine, FieldMapping
 from core.excel_generator import ExcelGenerator
+from core.schema_loader import load_schema
 from .quick_test_dialog import QuickTestDialog
 from .quick_test_runner import QuickTestRunner
 from .mapping_connector_overlay import MappingConnectorOverlay
+import traceback
 
 class TransformationDialog(QDialog):
     """Dialog for configuring field transformations"""
@@ -146,7 +148,7 @@ class DraggableTreeWidget(QTreeWidget):
         if not item:
             return
         # Use getattr to avoid attribute errors
-        field_data = getattr(item, 'field_data', None)
+        field_data = getattr(item, 'field_data', None)  # type: ignore[attr-defined]
         if action == expand_action:
             item.setExpanded(True)
         elif action == collapse_action:
@@ -269,6 +271,10 @@ class MainWindow(QMainWindow):
         
         # Set the application window icon
         self.setWindowIcon(QIcon(str(Path(__file__).parent.parent / 'assets' / 'anvil.ico')))
+        self.debug_output = QTextEdit()
+        self.debug_output.setReadOnly(True)
+        self.debug_output.setMaximumHeight(100)
+        main_layout.addWidget(self.debug_output)
     
     def setup_file_selection(self, parent_layout):
         """Setup file selection controls"""
@@ -380,7 +386,23 @@ class MainWindow(QMainWindow):
     def setup_control_buttons(self, parent_layout):
         """Setup control buttons"""
         button_layout = QHBoxLayout()
-        
+
+        # --- Adicionar campos para Sender e Receiver ---
+        self.sender_label = QLabel("Sender name:")
+        self.sender_input = QLineEdit()
+        self.sender_input.setPlaceholderText("Ex: APIManagement (Sender)")
+        self.sender_input.setText("Sender")
+        button_layout.addWidget(self.sender_label)
+        button_layout.addWidget(self.sender_input)
+
+        self.receiver_label = QLabel("Receiver name:")
+        self.receiver_input = QLineEdit()
+        self.receiver_input.setPlaceholderText("Ex: CRM (Receiver)")
+        self.receiver_input.setText("Receiver")
+        button_layout.addWidget(self.receiver_label)
+        button_layout.addWidget(self.receiver_input)
+        # --- Fim campos Sender/Receiver ---
+
         # Export button
         export_btn = QPushButton("Export to Excel")
         export_btn.setStyleSheet("""
@@ -397,16 +419,13 @@ class MainWindow(QMainWindow):
         """)
         export_btn.clicked.connect(self.export_to_excel)
         button_layout.addWidget(export_btn)
-        
         button_layout.addStretch()
-        
         # Validation button
         validate_btn = QPushButton("Validate Mapping")
         validate_btn.clicked.connect(self.validate_mapping)
         button_layout.addWidget(validate_btn)
-        
         parent_layout.addLayout(button_layout)
-    
+
     def setup_menu(self):
         """Setup the application menu"""
         menubar = self.menuBar()
@@ -546,31 +565,14 @@ class MainWindow(QMainWindow):
     
     def load_schema_files(self, source_path: str, target_path: str):
         """Load source and target schema files"""
-        # Determine file types and load schemas
-        source_ext = Path(source_path).suffix.lower()
-        target_ext = Path(target_path).suffix.lower()
-        
-        if source_ext == '.xsd':
-            self.source_fields = self.schema_processor.extract_fields_from_xsd(source_path)
-        elif source_ext == '.json':
-            self.source_fields = self.schema_processor.extract_fields_from_json_schema(source_path)
-        else:
-            raise ValueError(f"Unsupported source file type: {source_ext}")
-        
-        if target_ext == '.xsd':
-            self.target_fields = self.schema_processor.extract_fields_from_xsd(target_path)
-        elif target_ext == '.json':
-            self.target_fields = self.schema_processor.extract_fields_from_json_schema(target_path)
-        else:
-            raise ValueError(f"Unsupported target file type: {target_ext}")
-    
-        # Debug output for extracted fields
-        print("\n[DEBUG] Extracted Source Fields:")
-        for f in self.source_fields:
-            print(f"  path={f.path}, name={f.name}, type={f.type}, parent_path={f.parent_path}, is_complex={f.is_complex}, is_array={f.is_array}")
-        print("\n[DEBUG] Extracted Target Fields:")
-        for f in self.target_fields:
-            print(f"  path={f.path}, name={f.name}, type={f.type}, parent_path={f.parent_path}, is_complex={f.is_complex}, is_array={f.is_array}")
+        try:
+            self.source_fields = load_schema(source_path)  # type: ignore
+            self.target_fields = load_schema(target_path)  # type: ignore
+            self.debug_output.append(f"[DEBUG] Loaded {len(self.source_fields)} source fields, {len(self.target_fields)} target fields.")
+        except Exception as e:
+            tb = traceback.format_exc()
+            self.debug_output.append(f"[ERROR] {str(e)}\n{tb}")
+            QMessageBox.critical(self, "Error", f"Error loading schemas:\n{str(e)}\n\n{tb}")
     
     def populate_schema_trees_hierarchical(self):
         """Populate schema trees with hierarchical structure and update field counts"""
@@ -606,6 +608,8 @@ class MainWindow(QMainWindow):
                     parent_item.addChild(item)
                 # Recursively add children
                 add_children(item, field.path)
+                # Connect double-click to inspector
+                tree.itemDoubleClicked.connect(lambda item, _: self.show_field_inspector(getattr(item, 'field_data', None)))  # type: ignore[attr-defined]
 
         # Start recursion from root (parent_path == "")
         add_children(None, "")
@@ -617,15 +621,15 @@ class MainWindow(QMainWindow):
             field.type,
             field.cardinality,
             field.description,
-            self._format_restrictions(field.constraints)
+            self._format_restrictions(getattr(field, 'restrictions', {}))  # type: ignore
         ])
-        setattr(item, 'field_data', field)
+        setattr(item, 'field_data', field)  # type: ignore[attr-defined]
         return item
 
-    def _format_restrictions(self, constraints: dict) -> str:
-        if not constraints:
+    def _format_restrictions(self, restrictions: dict) -> str:
+        if not restrictions:
             return ""
-        return ", ".join(f"{k}={v}" for k, v in constraints.items())
+        return ", ".join(f"{k}={v}" for k, v in restrictions.items())
     
     def handle_field_drop(self, event, target_field: SchemaField):
         """Handle field drop for mapping with target field"""
@@ -643,8 +647,8 @@ class MainWindow(QMainWindow):
                     return
                 # Create mapping
                 mapping = FieldMapping(
-                    source_field=source_field,
-                    target_field=target_field,
+                    source_field=source_field,  # type: ignore
+                    target_field=target_field,  # type: ignore
                     similarity=0.8,  # Default similarity
                     confidence="manual"
                 )
@@ -654,7 +658,7 @@ class MainWindow(QMainWindow):
                                        and m.target_field.path == target_field.path), None)
                 if existing_mapping:
                     # Update existing mapping
-                    existing_mapping.target_field = target_field
+                    existing_mapping.target_field = target_field  # type: ignore
                     existing_mapping.confidence = "manual"
                 else:
                     # Add new mapping
@@ -681,7 +685,9 @@ class MainWindow(QMainWindow):
             self.status_bar.showMessage(f"Auto-mapping completed: {len(self.mappings)} mappings created")
             
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error during auto-mapping: {str(e)}")
+            tb = traceback.format_exc()
+            self.debug_output.append(f"[ERROR] {str(e)}\n{tb}")
+            QMessageBox.critical(self, "Error", f"Error during auto-mapping:\n{str(e)}\n\n{tb}")
     
     def update_mapping_table(self):
         """Update the mapping table with current mappings"""
@@ -800,51 +806,67 @@ Warnings: {len(validation['warnings'])}
             QMessageBox.information(self, "Mapping Validation", result_text)
             
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error validating mapping: {str(e)}")
+            tb = traceback.format_exc()
+            self.debug_output.append(f"[ERROR] {str(e)}\n{tb}")
+            QMessageBox.critical(self, "Error", f"Error validating mapping:\n{str(e)}\n\n{tb}")
     
+    def show_colored_message(self, title, message, icon=QMessageBox.Information):
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle(title)
+        msg_box.setText(message)
+        msg_box.setIcon(icon)
+        # Set a dark background and light text for dark mode, or vice versa
+        if self.current_mode == 'dark':
+            msg_box.setStyleSheet("""
+                QMessageBox { background-color: #232526; color: #F1F1F1; }
+                QLabel { color: #F1F1F1; }
+                QPushButton { color: #232526; background-color: #F1F1F1; }
+            """)
+        else:
+            msg_box.setStyleSheet("""
+                QMessageBox { background-color: #F1F1F1; color: #232526; }
+                QLabel { color: #232526; }
+                QPushButton { color: #F1F1F1; background-color: #232526; }
+            """)
+        msg_box.exec()
+
     def export_to_excel(self):
         """Export mapping to Excel with transformations"""
         if not self.mappings:
-            QMessageBox.warning(self, "Warning", "No mappings to export. Please create mappings first.")
+            self.show_colored_message("Warning", "No mappings to export. Please create mappings first.", QMessageBox.Warning)
             return
-        
         try:
             # Get output file path
             output_path, _ = QFileDialog.getSaveFileName(
                 self, "Export to Excel", "schema_mapping.xlsx", "Excel Files (*.xlsx)"
             )
-            
             if not output_path:
                 return
-        
-            # Create enhanced Excel with transformations
+            # Export using the new field-level mapping format
             success = self.create_mapping_excel_with_transformations(output_path)
-            
             if success:
-                QMessageBox.information(self, "Success", f"Mapping exported successfully to:\n{output_path}")
+                self.show_colored_message("Success", f"Mapping exported successfully to:\n{output_path}", QMessageBox.Information)
                 self.status_bar.showMessage(f"Mapping exported to: {output_path}")
             else:
-                QMessageBox.critical(self, "Error", "Failed to export mapping to Excel")
-                
+                self.show_colored_message("Error", "Failed to export mapping to Excel", QMessageBox.Critical)
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error exporting to Excel: {str(e)}")
-    
+            tb = traceback.format_exc()
+            self.debug_output.append(f"[ERROR] {str(e)}\n{tb}")
+            self.show_colored_message("Error", f"Error exporting to Excel: {str(e)}\n\n{tb}", QMessageBox.Critical)
+
     def create_mapping_excel_with_transformations(self, output_path: str) -> bool:
-        """Create Excel file with Request/Response structure and transformations"""
+        """Create Excel file with field-level mapping structure and transformations"""
         try:
-            # Use the new Request/Response Excel generator
-            success = self.excel_generator.create_mapping_excel_request_response(
-                self.source_fields, 
-                self.target_fields, 
-                self.mappings, 
-                self.transformations,
+            # Use the new field-level mapping Excel generator
+            success = self.excel_generator.create_field_level_mapping_excel(
+                self.mappings,
                 output_path
             )
-            
             return success
-                
         except Exception as e:
-            print(f"Error creating Request/Response Excel: {e}")
+            tb = traceback.format_exc()
+            self.debug_output.append(f"[ERROR] {str(e)}\n{tb}")
+            print(f"Error creating Field Mapping Excel: {e}")
             return False
     
     def open_schemas(self):
@@ -1008,3 +1030,17 @@ Warnings: {len(validation['warnings'])}
             x1 = src_geom.x()
             x2 = tgt_geom.x()
             self.mapping_connector_overlay.setGeometry(x1, y, x2 - x1, h) 
+
+    def show_field_inspector(self, field: SchemaField):
+        dlg = QDialog(self)
+        dlg.setWindowTitle(f"Field Inspector: {field.name}")
+        layout = QVBoxLayout(dlg)
+        text = QTextEdit()
+        text.setReadOnly(True)
+        details = "\n".join(f"{k}: {v}" for k, v in field.__dict__.items())
+        text.setText(details)
+        layout.addWidget(text)
+        btn = QPushButton("Close")
+        btn.clicked.connect(dlg.accept)
+        layout.addWidget(btn)
+        dlg.exec() 

@@ -1,21 +1,475 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
-    <xs:element name="Person">
-        <xs:complexType>
-            <xs:sequence>
-                <xs:element name="Name" type="xs:string" minOccurs="1" maxOccurs="1"/>
-                <xs:element name="Age" type="xs:int" minOccurs="1" maxOccurs="1"/>
-                <xs:element name="Email" type="xs:string" minOccurs="0" maxOccurs="1"/>
-                <xs:element name="Addresses" minOccurs="0" maxOccurs="unbounded">
-                    <xs:complexType>
-                        <xs:sequence>
-                            <xs:element name="Street" type="xs:string"/>
-                            <xs:element name="City" type="xs:string"/>
-                            <xs:element name="Country" type="xs:string"/>
-                        </xs:sequence>
-                    </xs:complexType>
-                </xs:element>
-            </xs:sequence>
-        </xs:complexType>
-    </xs:element>
-</xs:schema> 
+<xsd:schema targetNamespace="http://edp.pt/ECC/MM/Reservation"
+            xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            xmlns="http://edp.pt/ECC/MM/Reservation"
+            xmlns:p5="http://edp.pt/CommonLib/DataModel/v3.0">
+	<xsd:import namespace="http://edp.pt/CommonLib/DataModel/v3.0"
+	            schemaLocation="ExportXMLSchema1.xsd"/>
+	<xsd:element name="CreateRequest"
+	             type="CreateRequest"/>
+	<xsd:complexType name="CreateRequest">
+		<xsd:annotation>
+			<xsd:documentation xml:lang="EN">Create Reservation Request</xsd:documentation>
+		</xsd:annotation>
+		<xsd:sequence>
+			<xsd:element name="Header"
+			             type="p5:Header"
+			             minOccurs="0"/>
+			<xsd:element name="Reservation">
+				<xsd:complexType>
+					<xsd:sequence>
+						<xsd:element name="ReservationItemFields"
+						             type="ItemFields"
+						             maxOccurs="unbounded"/>
+						<xsd:element name="ReservationHeaderFields"
+						             type="HeaderFields"/>
+						<xsd:element name="ReservationForProfitabilitySegment"
+						             type="ReservationForProfitabilitySegment"
+						             minOccurs="0"
+						             maxOccurs="unbounded"/>
+						<xsd:element name="CustomerEnhancementsOfImportInterface"
+						             type="CustomerEnhancementsOfImportInterface"
+						             minOccurs="0"
+						             maxOccurs="unbounded"/>
+						<xsd:element name="TestMode"
+						             type="xsd:boolean"
+						             minOccurs="0">
+							<xsd:annotation>
+								<xsd:documentation>Execute in Test Mode</xsd:documentation>
+							</xsd:annotation>
+						</xsd:element>
+						<xsd:element name="ATPCheck"
+						             type="xsd:boolean"
+						             minOccurs="0">
+							<xsd:annotation>
+								<xsd:documentation>Availability Overview</xsd:documentation>
+							</xsd:annotation>
+						</xsd:element>
+						<xsd:element name="CalCheck"
+						             type="xsd:boolean"
+						             minOccurs="0"/>
+						<xsd:element name="ExternalReservationNumber"
+						             minOccurs="0">
+							<xsd:annotation>
+								<xsd:documentation>External Reservation Number</xsd:documentation>
+							</xsd:annotation>
+							<xsd:simpleType>
+								<xsd:restriction base="xsd:string">
+									<xsd:pattern value="\d+"/>
+									<xsd:maxLength value="10"/>
+								</xsd:restriction>
+							</xsd:simpleType>
+						</xsd:element>
+					</xsd:sequence>
+				</xsd:complexType>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="HeaderFields">
+		<xsd:annotation>
+			<xsd:documentation xml:lang="EN">Reservation Header Fields Data Type</xsd:documentation>
+		</xsd:annotation>
+		<xsd:sequence>
+			<xsd:element name="ReservationDate"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Base date for reservation</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:pattern value="....-..-.."/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="CreatedBy"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>User Name</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="12"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="ReservationForProfitabilitySegment">
+		<xsd:annotation>
+			<xsd:documentation xml:lang="EN">Reservation For Profitability Segment Data Type</xsd:documentation>
+		</xsd:annotation>
+		<xsd:sequence>
+			<xsd:element name="FIELDNAME"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Field Name</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="30"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="VALUE"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>CO-PA characteristic value</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="50"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="CustomerEnhancementsOfImportInterface">
+		<xsd:annotation>
+			<xsd:documentation xml:lang="EN">Customer Enhancements Of Import Interface Data Type</xsd:documentation>
+		</xsd:annotation>
+		<xsd:sequence>
+			<xsd:element name="STRUCTURE"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Structure name of  BAPI table extension</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="30"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="VALUEPART1"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Data part of BAPI extension parameter</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="240"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="ItemFields">
+		<xsd:annotation>
+			<xsd:documentation xml:lang="EN">Reservation Item Fields Data Type</xsd:documentation>
+		</xsd:annotation>
+		<xsd:sequence>
+			<xsd:element name="Material"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Material Number</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="18"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="Plant"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Plant</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="4"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="StorageLocation"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Storage Location</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="4"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="Batch"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Batch Number</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="10"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="ValuationType"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Valuation Type</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="10"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="EntryQuantity"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Quantity in Unit of Entry</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:decimal">
+						<xsd:totalDigits value="13"/>
+						<xsd:fractionDigits value="3"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="EntryUnit"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Unit of Entry</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="3"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="ISOCode"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>ISO code for unit of measurement</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="3"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="RequirementDate"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Requirement Date for the Component</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:pattern value="....-..-.."/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="GLAccount"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>G/L Account Number</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="10"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="AcctManually"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Acct entered manually</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="1"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="ItemText"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Item Text</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="50"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="GoodsRecipient"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Goods Recipient/Ship-To Party</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="12"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="UnloadingPoint"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Unloading Point</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="25"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="FixedQuantity"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Quantity is Fixed</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="1"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="Movement"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Goods Movement for Reservation Allowed</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="1"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="CommitmentItem"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Commitment Item</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="24"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="FundsCenter"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Funds Center</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="16"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="Fund"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Fund</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="10"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="ReadGMIndicator"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Use Goods Movement Indicator from Customizing</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="1"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="Grant"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Grant</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="20"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="ExternalMaterialNumber"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Long Material Number for MATERIAL Field</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="40"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="MaterialGuid"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>External GUID for MATERIAL Field</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="32"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="MaterialVersion"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Version Number for MATERIAL Field</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="10"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="RequirementUrgency"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Requirement Urgency</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:pattern value="\d+"/>
+						<xsd:maxLength value="2"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="RequirementPriority"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Requirement Priority</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:pattern value="\d+"/>
+						<xsd:maxLength value="3"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="BudgetPeriod"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>FM: Budget Period</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="10"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="ItemNumberPosition"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Item Number Position on Local System</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:pattern value="\d+"/>
+						<xsd:maxLength value="4"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<!-- ... rest of the XSD omitted for brevity ... -->
+</xsd:schema> 

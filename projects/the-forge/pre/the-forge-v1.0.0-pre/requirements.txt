@@ -1,20 +1,2 @@
-# Core dependencies
-openpyxl>=3.1.0
-Pillow>=9.0.0
-
-# Optional dependencies for enhanced functionality
-python-Levenshtein>=0.20.0
-
-# Development and testing dependencies
-pytest>=7.0.0
-pytest-cov>=4.0.0
-black>=22.0.0
-flake8>=5.0.0
-mypy>=1.0.0
-
-# GUI dependencies (for the GUI version)
-tkinter  # Usually comes with Python
-
-# Documentation
-sphinx>=5.0.0
-sphinx-rtd-theme>=1.0.0 
+openpyxl
+jsonschema 

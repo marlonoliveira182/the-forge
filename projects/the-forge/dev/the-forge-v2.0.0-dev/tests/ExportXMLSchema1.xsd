@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            targetNamespace="http://edp.pt/CommonLib/DataModel/v3.0"
+            xmlns="http://edp.pt/CommonLib/DataModel/v3.0">
+    <xsd:complexType name="Header">
+        <xsd:sequence/>
+    </xsd:complexType>
+    <xsd:complexType name="HeaderFields">
+        <xsd:sequence/>
+    </xsd:complexType>
+    <xsd:complexType name="ReservationForProfitabilitySegment">
+        <xsd:sequence/>
+    </xsd:complexType>
+    <xsd:complexType name="CustomerEnhancementsOfImportInterface">
+        <xsd:sequence/>
+    </xsd:complexType>
+</xsd:schema> 

@@ -54,15 +54,15 @@ class QuickTestDialog(QDialog):
         
         # Buttons
         btn_layout = QHBoxLayout()
-        self.run_all_btn = QPushButton("Run All Tests")
+        self.run_all_btn = QPushButton("Run All Manual Tests")
         self.run_all_btn.clicked.connect(self.run_all_tests)
-        self.run_comprehensive_btn = QPushButton("Run Comprehensive Suite")
-        self.run_comprehensive_btn.clicked.connect(self.run_comprehensive_suite)
+        self.run_automatic_btn = QPushButton("Run Automatic Suite")
+        self.run_automatic_btn.clicked.connect(self.run_automatic_suite)
         self.close_btn = QPushButton("Close")
         self.close_btn.clicked.connect(self.accept)
         
         btn_layout.addWidget(self.run_all_btn)
-        btn_layout.addWidget(self.run_comprehensive_btn)
+        btn_layout.addWidget(self.run_automatic_btn)
         btn_layout.addStretch()
         btn_layout.addWidget(self.close_btn)
         layout.addLayout(btn_layout)
@@ -145,14 +145,14 @@ class QuickTestDialog(QDialog):
         
         self.run_tests_in_thread(visible_tests)
 
-    def run_comprehensive_suite(self):
-        """Run all comprehensive test cases"""
-        comprehensive_tests = [tc for tc in self.all_test_cases if tc["type"] == "comprehensive"]
-        if not comprehensive_tests:
-            self.result_box.setText("No comprehensive test cases found.")
+    def run_automatic_suite(self):
+        """Run all automatic test cases"""
+        automatic_tests = [tc for tc in self.all_test_cases if tc["type"] == "automatic"]
+        if not automatic_tests:
+            self.result_box.setText("No automatic test cases found.")
             return
         
-        self.run_tests_in_thread(comprehensive_tests)
+        self.run_tests_in_thread(automatic_tests)
 
     def run_tests_in_thread(self, test_cases):
         """Run tests in a separate thread to avoid blocking UI"""

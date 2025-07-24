@@ -49,7 +49,7 @@ setup(
             "mypy>=1.0.0",
         ],
         "gui": [
-            "tkinter",  # Usually comes with Python
+            # 'tkinter',  # Removed, as it is not installable via pip
         ],
         "docs": [
             "sphinx>=5.0.0",

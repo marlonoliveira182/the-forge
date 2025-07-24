@@ -9,6 +9,11 @@ import re
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
+try:
+    import xmlschema  # type: ignore  # NEW: for robust XSD parsing
+except ImportError:
+    xmlschema = None  # type: ignore
+import jsonschema  # NEW: for robust JSON Schema validation
 
 @dataclass
 class SchemaField:
@@ -34,38 +39,144 @@ class SchemaProcessor:
         self.simple_types = {}
     
     def extract_fields_from_xsd(self, xsd_path: str) -> List[SchemaField]:
-        """Extract fields from XSD file with exact name preservation (no global type flattening, only true hierarchy)"""
+        """Extract fields from XSD file using xmlschema for robust parsing, with robust recursion and debug output."""
         try:
-            tree = ET.parse(xsd_path)
-            root = tree.getroot()
-            self._extract_namespaces(root)
-            self._extract_types(root)
-            visited = set()
+            if xmlschema is None:
+                raise ImportError("xmlschema library is not installed.")
+            schema = xmlschema.XMLSchema(xsd_path)
             fields = []
-            # Only process direct <xs:element> children of <xs:schema> as roots
-            for element in root.findall('xs:element', self.namespace_map):
-                fields.extend(self._process_element(element, parent_path="", root=root, visited=visited))
-            # Debug: print all field paths
-            print("[DEBUG] Extracted field paths:")
-            for f in fields:
-                print(f"  path={f.path}, name={f.name}, type={f.type}, parent_path={f.parent_path}")
+            def walk(element, parent_path: str, parent_required: bool = True):
+                name = element.name or element.local_name or ""
+                field_path = f"{parent_path}.{name}" if parent_path else name
+                is_complex = element.type.is_complex() if hasattr(element.type, 'is_complex') else False
+                is_array = (getattr(element, 'max_occurs', 1) not in (1, 0, None))
+                cardinality = str(getattr(element, 'max_occurs', 1))
+                required = getattr(element, 'min_occurs', 1) != 0 and parent_required
+                # Constraints
+                constraints = {}
+                if hasattr(element.type, 'facets'):
+                    for facet_name, facet in element.type.facets.items():
+                        if facet_name == 'enumeration':
+                            constraints['enumeration'] = [v for v in facet.enumeration]
+                        elif facet_name == 'pattern':
+                            constraints['pattern'] = facet.patterns[0].pattern if facet.patterns else ''
+                        elif facet_name in ('minLength', 'maxLength', 'length'):
+                            constraints[facet_name] = facet.value
+                        elif facet_name in ('fractionDigits', 'totalDigits'):
+                            constraints[facet_name] = facet.value
+                # Annotations
+                description = ""
+                metadata = {}
+                if element.annotation is not None:
+                    # xmlschema's XsdAnnotation has .documentation and .appinfo lists
+                    docs = []
+                    if hasattr(element.annotation, 'documentation'):
+                        docs = [d for d in element.annotation.documentation if hasattr(d, 'text') and d.text] or [d for d in element.annotation.documentation if isinstance(d, str) and d]
+                    if docs:
+                        description = docs[0].text if hasattr(docs[0], 'text') else str(docs[0])
+                        metadata['documentation'] = description
+                    # Optionally extract appinfo
+                    if hasattr(element.annotation, 'appinfo') and element.annotation.appinfo:
+                        metadata['appinfo'] = [a.text if hasattr(a, 'text') else str(a) for a in element.annotation.appinfo if a]
+                # Guarantee type safety for all code paths (always run this)
+                description = description or ""
+                metadata = metadata or {}
+                # Compose field
+                field = SchemaField(
+                    path=field_path,
+                    name=name,
+                    type=str(element.type.name) if element.type is not None else 'string',
+                    description=description,
+                    cardinality=cardinality,
+                    required=required,
+                    parent_path=parent_path,
+                    is_array=is_array,
+                    is_complex=is_complex,
+                    constraints=constraints,
+                    metadata=metadata
+                )
+                fields.append(field)
+                print(f"[DEBUG] XSD Field: {field.path} | {field.type} | {field.cardinality} | {field.required} | {field.constraints} | {field.description}")
+                # Recurse into children if complex
+                if is_complex and hasattr(element.type, 'content') and element.type.content:
+                    for child in element.type.content.iter_elements():
+                        walk(child, field_path, required)
+            # Start from all global elements
+            for elem in schema.elements.values():
+                walk(elem, "")
+            print(f"[DEBUG] Extracted {len(fields)} fields from XSD")
             return fields
         except Exception as e:
             print(f"[ERROR] Failed to extract fields from XSD: {e}")
             return []
     
     def extract_fields_from_json_schema(self, json_path: str) -> List[SchemaField]:
-        """Extract fields from JSON Schema file with exact name preservation"""
+        """Extract fields from JSON Schema file using jsonschema for robust parsing"""
         try:
             with open(json_path, 'r', encoding='utf-8') as f:
                 schema_data = json.load(f)
-            
+            # Validate schema structure
+            jsonschema.Draft7Validator.check_schema(schema_data)
             fields = []
+            def walk(properties: dict, parent_path: str, schema: dict):
+                if parent_path is None:
+                    parent_path = ""
+                if schema is None:
+                    schema = {}
+                for prop_name, prop_data in properties.items():
+                    field_path = f"{parent_path}.{prop_name}" if parent_path else prop_name
+                    field_type = prop_data.get('type', 'object' if 'properties' in prop_data else 'string')
+                    cardinality = '1'
+                    required = prop_name in schema.get('required', [])
+                    is_array = field_type == 'array'
+                    is_complex = field_type in ['object', 'array'] or 'properties' in prop_data
+                    constraints = {}
+                    if 'pattern' in prop_data:
+                        constraints['pattern'] = prop_data['pattern']
+                    if 'minLength' in prop_data:
+                        constraints['minLength'] = prop_data['minLength']
+                    if 'maxLength' in prop_data:
+                        constraints['maxLength'] = prop_data['maxLength']
+                    if 'minimum' in prop_data:
+                        constraints['minimum'] = prop_data['minimum']
+                    if 'maximum' in prop_data:
+                        constraints['maximum'] = prop_data['maximum']
+                    if 'enum' in prop_data:
+                        constraints['enumeration'] = prop_data['enum']
+                    if 'format' in prop_data:
+                        constraints['format'] = prop_data['format']
+                    description = prop_data.get('description', '')
+                    metadata = {}
+                    if 'title' in prop_data:
+                        metadata['title'] = prop_data['title']
+                    if 'examples' in prop_data:
+                        metadata['examples'] = prop_data['examples']
+                    if 'default' in prop_data:
+                        metadata['default'] = prop_data['default']
+                    if 'additionalProperties' in prop_data:
+                        metadata['additionalProperties'] = prop_data['additionalProperties']
+                    field = SchemaField(
+                        path=field_path,
+                        name=prop_name,
+                        type=field_type,
+                        description=description,
+                        cardinality=cardinality,
+                        required=required,
+                        parent_path=parent_path,
+                        is_array=is_array,
+                        is_complex=is_complex,
+                        constraints=constraints,
+                        metadata=metadata
+                    )
+                    fields.append(field)
+                    # Recurse into nested properties
+                    if is_complex and 'properties' in prop_data:
+                        walk(prop_data['properties'], str(field_path), dict(prop_data))
+                    if is_array and 'items' in prop_data and isinstance(prop_data['items'], dict) and 'properties' in prop_data['items']:
+                        walk(prop_data['items']['properties'], str(field_path), dict(prop_data['items']))
             if 'properties' in schema_data:
-                fields = self._process_json_properties(schema_data['properties'], "", schema_data)
-            
+                walk(schema_data['properties'], "", schema_data)
             return fields
-            
         except Exception as e:
             raise Exception(f"Error processing JSON Schema file: {str(e)}")
     
@@ -128,40 +239,9 @@ class SchemaProcessor:
         if element_type:
             print(f"[DEBUG] Processing element: {element_name}, type: {element_type}")
             print(f"[DEBUG] Available complex_types: {list(self.complex_types.keys())}")
-        # If the element has a type attribute and it's a named complex type, expand its children
-        if element_type and element_type in self.complex_types:
-            # Prevent infinite recursion
-            visit_key = (field_path, element_type)
-            if visit_key in visited:
-                return fields
-            visited.add(visit_key)
-            # Create the parent field
-            field = SchemaField(
-                name=element_name,
-                type=element_type,
-                path=field_path,
-                parent_path=parent_path,
-                is_complex=True,
-                is_array=element.get('maxOccurs', '1') not in ('1', '0', None),
-                description=element.findtext('xs:annotation/xs:documentation', default='', namespaces=self.namespace_map),
-                cardinality=element.get('maxOccurs', '1'),
-                required=element.get('minOccurs', '1') != '0',
-                constraints={},
-                metadata={}
-            )
-            fields.append(field)
-            # Debug: print the XML structure of the complex type being expanded
-            import xml.etree.ElementTree as ET
-            print(f"[DEBUG] Expanding complex type {element_type}:")
-            print(ET.tostring(self.complex_types[element_type], encoding='unicode'))
-            # Recursively process children inside xs:sequence, xs:all, xs:choice
-            for container_tag in ['xs:sequence', 'xs:all', 'xs:choice']:
-                for container in self.complex_types[element_type].findall(container_tag, self.namespace_map):
-                    for child in container.findall('xs:element', self.namespace_map):
-                        fields.extend(self._process_element(child, field_path, root, visited))
-            return fields
-        # Otherwise, process as a simple or inline complex element
-        is_complex = any(child.tag.endswith('complexType') for child in element)
+        
+        # Create the field first (whether it's complex or simple)
+        is_complex = element_type in self.complex_types if element_type else any(child.tag.endswith('complexType') for child in element)
         field = SchemaField(
             name=element_name,
             type=element_type or element.get('type', 'string'),
@@ -177,9 +257,30 @@ class SchemaProcessor:
         )
         print(f"[DEBUG] Field: {field.path}, Constraints: {field.constraints}")
         fields.append(field)
+        
+        # If the element has a type attribute and it's a named complex type, expand its children
+        if element_type and element_type in self.complex_types:
+            # Prevent infinite recursion
+            visit_key = (field_path, element_type)
+            if visit_key in visited:
+                return fields
+            visited.add(visit_key)
+            
+            # Debug: print the XML structure of the complex type being expanded
+            import xml.etree.ElementTree as ET
+            print(f"[DEBUG] Expanding complex type {element_type}:")
+            print(ET.tostring(self.complex_types[element_type], encoding='unicode'))
+            
+            # Recursively process children inside xs:sequence, xs:all, xs:choice
+            for container_tag in ['xs:sequence', 'xs:all', 'xs:choice']:
+                for container in self.complex_types[element_type].findall(container_tag, self.namespace_map):
+                    for child in container.findall('xs:element', self.namespace_map):
+                        fields.extend(self._process_element(child, field_path, root, visited))
+        
         # If inline complexType, process its children
         for child in element.findall('.//xs:element', self.namespace_map):
             fields.extend(self._process_element(child, field_path, root, visited))
+        
         return fields
     
     def _determine_field_type(self, element: ET.Element, element_type: str, root: ET.Element) -> str:
@@ -239,6 +340,9 @@ class SchemaProcessor:
     def _extract_constraints(self, element: ET.Element) -> Dict[str, Any]:
         """Extract field constraints"""
         constraints = {}
+        
+        if element is None:
+            return constraints
         
         try:
             # Extract pattern constraints
@@ -332,65 +436,6 @@ class SchemaProcessor:
         
         return fields
     
-    def _process_json_properties(self, properties: Dict[str, Any], parent_path: str, schema: Dict[str, Any]) -> List[SchemaField]:
-        """Process JSON Schema properties with exact name preservation"""
-        fields = []
-        
-        for prop_name, prop_data in properties.items():
-            # Build field path
-            field_path = f"{parent_path}.{prop_name}" if parent_path else prop_name
-            
-            # Determine field type
-            field_type = self._determine_json_field_type(prop_data)
-            
-            # Determine cardinality
-            cardinality = self._determine_json_cardinality(prop_data)
-            
-            # Check if required
-            required = prop_name in schema.get('required', [])
-            
-            # Check if array
-            is_array = field_type == 'array'
-            
-            # Check if complex
-            is_complex = self._is_json_complex_type(prop_data)
-            
-            # Extract constraints
-            constraints = self._extract_json_constraints(prop_data)
-            
-            # Extract metadata
-            metadata = self._extract_json_metadata(prop_data)
-            
-            # Create field
-            field = SchemaField(
-                path=field_path,
-                name=prop_name,  # Preserve exact name
-                            type=field_type,
-                description=prop_data.get('description', ''),
-                            cardinality=cardinality,
-                required=required,
-                parent_path=parent_path,
-                is_array=is_array,
-                is_complex=is_complex,
-                constraints=constraints,
-                metadata=metadata
-            )
-            
-            fields.append(field)
-            
-            # Process nested properties if complex
-            if is_complex and 'properties' in prop_data:
-                nested_fields = self._process_json_properties(prop_data['properties'], field_path, prop_data)
-                fields.extend(nested_fields)
-            
-            # Process array items if array
-            if is_array and 'items' in prop_data:
-                if isinstance(prop_data['items'], dict) and 'properties' in prop_data['items']:
-                    nested_fields = self._process_json_properties(prop_data['items']['properties'], field_path, prop_data['items'])
-                    fields.extend(nested_fields)
-        
-        return fields
-    
     def _determine_json_field_type(self, prop_data: Dict[str, Any]) -> str:
         """Determine JSON Schema field type"""
         if 'type' in prop_data:
@@ -402,16 +447,57 @@ class SchemaProcessor:
         else:
             return 'string'  # Default type
     
-    def _determine_json_cardinality(self, prop_data: Dict[str, Any]) -> str:
+    def _determine_json_cardinality(self, prop_data: Dict[str, Any], prop_name: str = None, parent_schema: Dict[str, Any] = None) -> str:
         """Determine JSON Schema field cardinality"""
         if prop_data.get('type') == 'array':
-            return '0..*'  # Arrays are typically unbounded
+            min_items = prop_data.get('minItems')
+            max_items = prop_data.get('maxItems')
+            min_str = str(min_items) if min_items is not None else '0'
+            max_str = str(max_items) if max_items is not None else '*'
+            return f"{min_str}..{max_str}"
         else:
-            return '1'  # Default cardinality
-    
-    def _is_json_complex_type(self, prop_data: Dict[str, Any]) -> bool:
-        """Check if JSON Schema field is complex"""
-        return prop_data.get('type') in ['object', 'array'] or 'properties' in prop_data
+            # For objects/fields, use parent's required list if available
+            if prop_name and parent_schema and 'required' in parent_schema:
+                return '1' if prop_name in parent_schema['required'] else '0..1'
+            return '1'
+
+    def _process_json_properties(self, properties: Dict[str, Any], parent_path: str, schema: Dict[str, Any]) -> List[SchemaField]:
+        """Process JSON Schema properties with exact name preservation"""
+        fields = []
+        for prop_name, prop_data in properties.items():
+            field_path = f"{parent_path}.{prop_name}" if parent_path else prop_name
+            field_type = self._determine_json_field_type(prop_data)
+            # Defensive: ensure prop_name and schema are not None
+            safe_prop_name = prop_name if prop_name is not None else ""
+            safe_schema = schema if schema is not None else {}
+            cardinality = self._determine_json_cardinality(prop_data, safe_prop_name, safe_schema)
+            required = prop_name in schema.get('required', [])
+            is_array = field_type == 'array'
+            is_complex = self._is_json_complex_type(prop_data)
+            constraints = self._extract_json_constraints(prop_data)
+            metadata = self._extract_json_metadata(prop_data)
+            field = SchemaField(
+                path=field_path,
+                name=prop_name,
+                type=field_type,
+                description=prop_data.get('description', ''),
+                cardinality=cardinality,
+                required=required,
+                parent_path=parent_path,
+                is_array=is_array,
+                is_complex=is_complex,
+                constraints=constraints,
+                metadata=metadata
+            )
+            fields.append(field)
+            if is_complex and 'properties' in prop_data:
+                nested_fields = self._process_json_properties(prop_data['properties'], field_path, prop_data)
+                fields.extend(nested_fields)
+            if is_array and 'items' in prop_data:
+                if isinstance(prop_data['items'], dict) and 'properties' in prop_data['items']:
+                    nested_fields = self._process_json_properties(prop_data['items']['properties'], field_path, prop_data['items'])
+                    fields.extend(nested_fields)
+        return fields
     
     def _extract_json_constraints(self, prop_data: Dict[str, Any]) -> Dict[str, Any]:
         """Extract JSON Schema field constraints"""
@@ -466,3 +552,7 @@ class SchemaProcessor:
             metadata['additionalProperties'] = prop_data['additionalProperties']
         
         return metadata 
+
+    def _is_json_complex_type(self, prop_data: Dict[str, Any]) -> bool:
+        """Check if JSON Schema field is complex"""
+        return prop_data.get('type') in ['object', 'array'] or 'properties' in prop_data 

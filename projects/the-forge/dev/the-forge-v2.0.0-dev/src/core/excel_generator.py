@@ -9,8 +9,9 @@ import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils.dataframe import dataframe_to_rows
-from .schema_processor import SchemaField
+from .schema_field import SchemaField
 from .mapping_engine import FieldMapping
+from openpyxl.cell.cell import MergedCell
 
 class ExcelGenerator:
     """Generates formatted Excel files for schema documentation and mapping"""
@@ -33,92 +34,68 @@ class ExcelGenerator:
     
     def create_mapping_excel_request_response(self, source_fields: List[SchemaField], target_fields: List[SchemaField], 
                                            mappings: List[FieldMapping], transformations: Dict[str, Dict[str, Any]], 
-                                           output_path: str) -> bool:
-        """Create Excel file with Request/Response structure for confirmed mappings"""
+                                           output_path: str, sender_name: str = "Sender", receiver_name: str = "Receiver") -> bool:
+        """Create Excel file with a single flow (Request) for confirmed mappings, with dynamic headers"""
         try:
             wb = Workbook()
-            
-            # Create Request sheet
+            # Create only the Request sheet
             request_ws = wb.active
             if request_ws:
                 request_ws.title = "Request"
-            self._create_request_response_sheet(request_ws, source_fields, mappings, transformations, "Request")
-            
-            # Create Response sheet
-            response_ws = wb.create_sheet("Response")
-            self._create_request_response_sheet(response_ws, target_fields, mappings, transformations, "Response")
-            
-            # Create Summary sheet
+            self._create_request_response_sheet(request_ws, source_fields, mappings, transformations, "Request", sender_name, receiver_name)
+            # Optionally, keep summary, transformations, unmapped sheets
             self._create_summary_sheet(wb, source_fields, target_fields, mappings)
-            
-            # Create Transformations sheet
             if transformations:
                 self._create_transformations_sheet(wb, mappings, transformations)
-            
-            # Create Unmapped Fields sheet
             self._create_unmapped_sheet(wb, source_fields, target_fields, mappings)
-            
-            # Save workbook
             wb.save(output_path)
             return True
-            
         except Exception as e:
             print(f"Error creating Request/Response Excel: {e}")
             return False
-    
+
     def _create_request_response_sheet(self, ws, fields: List[SchemaField], mappings: List[FieldMapping], 
-                                     transformations: Dict[str, Dict[str, Any]], sheet_type: str):
-        """Create Request or Response sheet with detailed field information"""
-        # Define columns for mapping overview
-        columns = [
-            "Source Field Path", "Source Field Name", "Source Type",
-            "Target Field Path", "Target Field Name", "Target Type",
-            "Mapping Status", "Transformation Logic", "Notes"
+                                     transformations: Dict[str, Dict[str, Any]], sheet_type: str, sender_name: str, receiver_name: str):
+        """Create Request or Response sheet with detailed field information and two header rows"""
+        # Define columns and group headers
+        group_headers = [
+            sender_name, sender_name, sender_name, sender_name, sender_name, sender_name,
+            "Mappings", "Mappings", "Mappings", receiver_name, receiver_name
         ]
-        # Add headers
-        for col, header in enumerate(columns, 1):
-            cell = ws.cell(row=1, column=col, value=header)
+        columns = [
+            "Element", "Request Parame", "GDPR", "Cardinal", "Type", "Details",
+            "Description", "Transformation Mapping", "Destination Fields", "Element", "Description"
+        ]
+        # First header row (group headers)
+        for col, group in enumerate(group_headers, 1):
+            cell = ws.cell(row=1, column=col, value=group)
             cell.font = self.header_font
             cell.fill = self.header_fill
             cell.border = self.border
             cell.alignment = Alignment(horizontal='center', vertical='center')
-        row = 2
+        # Second header row (column names)
+        for col, header in enumerate(columns, 1):
+            cell = ws.cell(row=2, column=col, value=header)
+            cell.font = self.header_font
+            cell.fill = self.header_fill
+            cell.border = self.border
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+        # Merge cells for group headers
+        col_ranges = [(1,6), (7,9), (10,11)]
+        for start, end in col_ranges:
+            if start != end:
+                ws.merge_cells(start_row=1, start_column=start, end_row=1, end_column=end)
+        # Fill data rows (starting from row 3)
+        row = 3
         for field in fields:
-            # Find mapping for this field
-            mapping = next((m for m in mappings if m.source_field.path == field.path), None)
-            if mapping and not mapping.is_unmapped:
-                status = "Mapped"
-                row_fill = self.exact_match_fill if mapping.is_exact_match else (
-                    self.good_match_fill if mapping.is_good_match else self.weak_match_fill)
-                target_field = mapping.target_field
-                target_path = target_field.path
-                target_name = target_field.name
-                target_type = target_field.type
-                transformation_logic = self._get_transformation_logic(field.path, transformations)
-                notes = mapping.mapping_notes
-            else:
-                status = "Unmapped"
-                row_fill = self.unmapped_fill
-                target_path = ""
-                target_name = ""
-                target_type = ""
-                transformation_logic = ""
-                notes = ""
+            # Exemplo de preenchimento, adaptar conforme necessário
             row_data = [
-                field.path,
-                field.name,
-                field.type,
-                target_path,
-                target_name,
-                target_type,
-                status,
-                transformation_logic,
-                notes
+                field.name, "", "", field.cardinality, field.type, field.description,
+                "", "", "", "", ""
             ]
             for col, value in enumerate(row_data, 1):
                 cell = ws.cell(row=row, column=col, value=value)
                 cell.border = self.border
-                cell.fill = row_fill
                 cell.alignment = Alignment(vertical='top', wrap_text=True)
             row += 1
         self._auto_adjust_columns(ws)
@@ -290,18 +267,23 @@ class ExcelGenerator:
         self._auto_adjust_columns(ws)
     
     def _auto_adjust_columns(self, ws):
-        """Auto-adjust column widths"""
+        """Auto-adjust column widths, skipping merged cells"""
         for column in ws.columns:
             max_length = 0
-            column_letter = column[0].column_letter
+            column_letter = None
             for cell in column:
+                if isinstance(cell, MergedCell):
+                    continue
+                if column_letter is None:
+                    column_letter = cell.column_letter
                 try:
-                    if len(str(cell.value)) > max_length:
+                    if cell.value and len(str(cell.value)) > max_length:
                         max_length = len(str(cell.value))
                 except:
                     pass
-            adjusted_width = min(max_length + 2, 50)
-            ws.column_dimensions[column_letter].width = adjusted_width
+            if column_letter:
+                adjusted_width = min(max_length + 2, 50)
+                ws.column_dimensions[column_letter].width = adjusted_width
     
     # Legacy methods for backward compatibility
     def create_schema_excel(self, fields: List[SchemaField], output_path: str, schema_name: str = "Schema") -> bool:
@@ -342,7 +324,6 @@ class ExcelGenerator:
                     field.type,
                     field.cardinality,
                     field.description,
-                    field.details,
                     field.path
                 ]
                 
@@ -373,3 +354,151 @@ class ExcelGenerator:
         """Create Excel file with field mappings between schemas (legacy method)"""
         # Use the new Request/Response structure
         return self.create_mapping_excel_request_response(source_fields, target_fields, mappings, {}, output_path) 
+
+    def create_field_level_mapping_excel(self, mappings: List[FieldMapping], output_path: str) -> bool:
+        """Export all fields (complex and leaf) from both source and target, aligning mapped fields, and including unmapped fields with hierarchical indentation. Cardinality is always taken from the field data, never derived."""
+        try:
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Field Mapping"
+
+            def split_path(path):
+                return path.split(".") if path else []
+
+            # Collect all unique source and target fields (complex and leaf)
+            all_source_fields = []
+            all_target_fields = []
+            seen_src = set()
+            seen_tgt = set()
+            for m in mappings:
+                f = m.source_field
+                t = m.target_field
+                if f and f.path not in seen_src:
+                    all_source_fields.append(f)
+                    seen_src.add(f.path)
+                if t and t.path and t.path not in seen_tgt:
+                    all_target_fields.append(t)
+                    seen_tgt.add(t.path)
+            # Add unmapped target fields
+            for m in mappings:
+                t = m.target_field
+                if t and t.path and t.path not in seen_tgt:
+                    all_target_fields.append(t)
+                    seen_tgt.add(t.path)
+            # Add any target fields not in mappings (fully unmapped)
+            mapping_target_paths = {m.target_field.path for m in mappings if m.target_field and m.target_field.path}
+            for t in all_target_fields:
+                if t.path not in mapping_target_paths:
+                    all_target_fields.append(t)
+
+            # Determine max depth for source and target paths
+            max_src_depth = max((len(split_path(f.path)) for f in all_source_fields), default=1)
+            max_tgt_depth = max((len(split_path(f.path)) for f in all_target_fields), default=1)
+
+            src_levels = [f"Source Level{i+1}" for i in range(max_src_depth)]
+            tgt_levels = [f"Target Level{i+1}" for i in range(max_tgt_depth)]
+            src_cols = src_levels + ["Request Parameter", "GDPR", "Cardinality", "Type", "Description"]
+            map_cols = ["Transformation Mapping", "Destination Fields"]
+            tgt_cols = tgt_levels + ["Request Parameter", "GDPR", "Cardinality", "Type", "Description"]
+            headers = src_cols + map_cols + tgt_cols
+            for col, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col, value=header)
+                cell.font = self.header_font
+                cell.fill = self.header_fill
+                cell.border = self.border
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+
+            # Build mappings for quick lookup
+            mapping_by_src = {m.source_field.path: m for m in mappings if m.source_field}
+            mapping_by_tgt = {m.target_field.path: m for m in mappings if m.target_field and m.target_field.path}
+
+            # Prepare rows: mapped, unmapped source, unmapped target
+            rows = []
+            used_targets = set()
+            # 1. Mapped and unmapped source fields
+            for src_field in all_source_fields:
+                mapping = mapping_by_src.get(src_field.path)
+                if mapping and mapping.target_field and mapping.target_field.path:
+                    tgt_field = mapping.target_field
+                    used_targets.add(tgt_field.path)
+                else:
+                    tgt_field = None
+                rows.append((src_field, mapping, tgt_field))
+            # 2. Unmapped target fields
+            for tgt_field in all_target_fields:
+                if tgt_field.path not in used_targets:
+                    rows.append((None, None, tgt_field))
+
+            # For hierarchical indentation: track last values for each level (source and target)
+            last_src_levels = [None] * max_src_depth
+            last_tgt_levels = [None] * max_tgt_depth
+
+            for row_idx, (src_field, mapping, tgt_field) in enumerate(rows, 2):
+                # Source columns
+                if src_field:
+                    src_path_parts = split_path(src_field.path)
+                    src_row = []
+                    for i in range(max_src_depth):
+                        val = src_path_parts[i] if i < len(src_path_parts) else ""
+                        if val != last_src_levels[i]:
+                            src_row.append(val)
+                            last_src_levels[i] = val
+                            for j in range(i+1, max_src_depth):
+                                last_src_levels[j] = None
+                        else:
+                            src_row.append("")
+                    src_row += [
+                        getattr(src_field, 'request_parameter', ""),
+                        getattr(src_field, 'gdpr', ""),
+                        src_field.cardinality,
+                        src_field.type,
+                        src_field.description
+                    ]
+                else:
+                    src_row = [""] * (max_src_depth + 5)
+                # Mapping columns
+                if mapping and mapping.target_field and mapping.target_field.path:
+                    transformation = mapping.mapping_notes or ""
+                    if hasattr(self, '_get_transformation_logic'):
+                        logic = self._get_transformation_logic(mapping.source_field.path, {})
+                        if logic:
+                            transformation = logic
+                    dest_fields = mapping.target_field.path
+                else:
+                    transformation = ""
+                    dest_fields = tgt_field.path if tgt_field else ""
+                map_row = [transformation, dest_fields]
+                # Target columns
+                if tgt_field:
+                    tgt_path_parts = split_path(tgt_field.path)
+                    tgt_row = []
+                    for i in range(max_tgt_depth):
+                        val = tgt_path_parts[i] if i < len(tgt_path_parts) else ""
+                        if val != last_tgt_levels[i]:
+                            tgt_row.append(val)
+                            last_tgt_levels[i] = val
+                            for j in range(i+1, max_tgt_depth):
+                                last_tgt_levels[j] = None
+                        else:
+                            tgt_row.append("")
+                    tgt_row += [
+                        getattr(tgt_field, 'request_parameter', ""),
+                        getattr(tgt_field, 'gdpr', ""),
+                        tgt_field.cardinality,
+                        tgt_field.type,
+                        tgt_field.description
+                    ]
+                else:
+                    tgt_row = [""] * (max_tgt_depth + 5)
+                row_data = src_row + map_row + tgt_row
+                for col, value in enumerate(row_data, 1):
+                    cell = ws.cell(row=row_idx, column=col, value=value)
+                    if cell is not None:
+                        cell.border = self.border
+                        cell.alignment = Alignment(vertical='top', wrap_text=True)
+            self._auto_adjust_columns(ws)
+            wb.save(output_path)
+            return True
+        except Exception as e:
+            print(f"Error creating Field Mapping Excel: {e}")
+            return False 

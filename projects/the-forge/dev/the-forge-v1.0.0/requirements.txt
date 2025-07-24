@@ -12,9 +12,6 @@ black>=22.0.0
 flake8>=5.0.0
 mypy>=1.0.0
 
-# GUI dependencies (for the GUI version)
-tkinter  # Usually comes with Python
-
 # Documentation
 sphinx>=5.0.0
 sphinx-rtd-theme>=1.0.0 

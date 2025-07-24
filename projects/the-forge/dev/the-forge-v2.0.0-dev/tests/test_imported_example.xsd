@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema targetNamespace="http://edp.pt/ECC/MM/Reservation"
+            xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            xmlns="http://edp.pt/ECC/MM/Reservation"
+            xmlns:p5="http://edp.pt/CommonLib/DataModel/v3.0">
+	<xsd:import namespace="http://edp.pt/CommonLib/DataModel/v3.0"
+	            schemaLocation="ExportXMLSchema1.xsd"/>
+	<xsd:element name="CreateRequest"
+	             type="CreateRequest"/>
+	<xsd:complexType name="ItemFields">
+		<xsd:annotation>
+			<xsd:documentation xml:lang="EN">Reservation Item Fields Data Type</xsd:documentation>
+		</xsd:annotation>
+		<xsd:sequence>
+			<xsd:element name="Material"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Material Number</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="18"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="Plant"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Plant</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="4"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="StorageLocation"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Storage Location</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="4"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="Batch"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Batch Number</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="10"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="ValuationType"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Valuation Type</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="10"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="EntryQuantity"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Quantity in Unit of Entry</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:decimal">
+						<xsd:totalDigits value="13"/>
+						<xsd:fractionDigits value="3"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="EntryUnit"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Unit of Entry</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="3"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="ISOCode"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>ISO code for unit of measurement</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="3"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="RequirementDate"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Requirement Date for the Component</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:pattern value="....-..-.."/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<xsd:element name="GLAccount"
+			             minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>G/L Account Number</xsd:documentation>
+				</xsd:annotation>
+				<xsd:simpleType>
+					<xsd:restriction base="xsd:string">
+						<xsd:maxLength value="10"/>
+					</xsd:restriction>
+				</xsd:simpleType>
+			</xsd:element>
+			<!-- ... rest of the XSD omitted for brevity ... -->
+		</xsd:sequence>
+	</xsd:complexType>
+	<!-- ... rest of the XSD omitted for brevity ... -->
+</xsd:schema> 

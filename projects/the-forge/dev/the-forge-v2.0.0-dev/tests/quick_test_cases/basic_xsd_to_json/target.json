@@ -1,42 +1,415 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Person",
   "type": "object",
   "properties": {
-    "Name": {
-      "type": "string",
-      "description": "Person's full name"
-    },
-    "Age": {
-      "type": "integer",
-      "description": "Person's age"
-    },
-    "Email": {
-      "type": "string",
-      "format": "email",
-      "description": "Person's email address"
-    },
-    "Addresses": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "Street": {
-            "type": "string",
-            "description": "Street address"
-          },
-          "City": {
-            "type": "string",
-            "description": "City name"
-          },
-          "Country": {
-            "type": "string",
-            "description": "Country name"
-          }
+    "createRequest": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "type": "string"
         },
-        "required": ["Street", "City", "Country"]
-      }
+        "reservation": {
+          "type": "object",
+          "properties": {
+            "reservationItemFields": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "material": {
+                    "type": "string",
+                    "maxLength": 18,
+                    "description": "Material Number"
+                  },
+                  "plant": {
+                    "type": "string",
+                    "maxLength": 4,
+                    "description": "Plant"
+                  },
+                  "storageLocation": {
+                    "type": "string",
+                    "maxLength": 4,
+                    "description": "Storage Location"
+                  },
+                  "batch": {
+                    "type": "string",
+                    "maxLength": 10,
+                    "description": "Batch Number"
+                  },
+                  "valuationType": {
+                    "type": "string",
+                    "maxLength": 10,
+                    "description": "Valuation Type"
+                  },
+                  "entryQuantity": {
+                    "type": "string",
+                    "maxLength": 13,
+                    "multipleOf": 0.001,
+                    "description": "Quantity in Unit of Entry"
+                  },
+                  "entryUnit": {
+                    "type": "string",
+                    "maxLength": 3,
+                    "description": "Unit of Entry"
+                  },
+                  "iSOCode": {
+                    "type": "string",
+                    "maxLength": 3,
+                    "description": "ISO code for unit of measurement"
+                  },
+                  "requirementDate": {
+                    "type": "string",
+                    "pattern": "....-..-..",
+                    "description": "Requirement Date for the Component"
+                  },
+                  "gLAccount": {
+                    "type": "string",
+                    "maxLength": 10,
+                    "description": "G/L Account Number"
+                  },
+                  "acctManually": {
+                    "type": "string",
+                    "maxLength": 1,
+                    "description": "Acct entered manually"
+                  },
+                  "itemText": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "description": "Item Text"
+                  },
+                  "goodsRecipient": {
+                    "type": "string",
+                    "maxLength": 12,
+                    "description": "Goods Recipient/Ship-To Party"
+                  },
+                  "unloadingPoint": {
+                    "type": "string",
+                    "maxLength": 25,
+                    "description": "Unloading Point"
+                  },
+                  "fixedQuantity": {
+                    "type": "string",
+                    "maxLength": 1,
+                    "description": "Quantity is Fixed"
+                  },
+                  "movement": {
+                    "type": "string",
+                    "maxLength": 1,
+                    "description": "Goods Movement for Reservation Allowed"
+                  },
+                  "commitmentItem": {
+                    "type": "string",
+                    "maxLength": 24,
+                    "description": "Commitment Item"
+                  },
+                  "fundsCenter": {
+                    "type": "string",
+                    "maxLength": 16,
+                    "description": "Funds Center"
+                  },
+                  "fund": {
+                    "type": "string",
+                    "maxLength": 10,
+                    "description": "Fund"
+                  },
+                  "readGMIndicator": {
+                    "type": "string",
+                    "maxLength": 1,
+                    "description": "Use Goods Movement Indicator from Customizing"
+                  },
+                  "grant": {
+                    "type": "string",
+                    "maxLength": 20,
+                    "description": "Grant"
+                  },
+                  "externalMaterialNumber": {
+                    "type": "string",
+                    "maxLength": 40,
+                    "description": "Long Material Number for MATERIAL Field"
+                  },
+                  "materialGuid": {
+                    "type": "string",
+                    "maxLength": 32,
+                    "description": "External GUID for MATERIAL Field"
+                  },
+                  "materialVersion": {
+                    "type": "string",
+                    "maxLength": 10,
+                    "description": "Version Number for MATERIAL Field"
+                  },
+                  "requirementUrgency": {
+                    "type": "string",
+                    "pattern": "\\d+",
+                    "maxLength": 2,
+                    "description": "Requirement Urgency"
+                  },
+                  "requirementPriority": {
+                    "type": "string",
+                    "pattern": "\\d+",
+                    "maxLength": 3,
+                    "description": "Requirement Priority"
+                  },
+                  "budgetPeriod": {
+                    "type": "string",
+                    "maxLength": 10,
+                    "description": "FM: Budget Period"
+                  },
+                  "itemNumberPosition": {
+                    "type": "string",
+                    "pattern": "\\d+",
+                    "maxLength": 4,
+                    "description": "Item Number Position on Local System"
+                  }
+                }
+              },
+              "minItems": 1
+            },
+            "reservationHeaderFields": {
+              "type": "object",
+              "properties": {
+                "reservationDate": {
+                  "type": "string",
+                  "pattern": "....-..-..",
+                  "description": "Base date for reservation"
+                },
+                "createdBy": {
+                  "type": "string",
+                  "maxLength": 12,
+                  "description": "User Name"
+                },
+                "movementType": {
+                  "type": "string",
+                  "maxLength": 3,
+                  "description": "Movement Type (Inventory Management)"
+                },
+                "costCenter": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "Cost Center"
+                },
+                "assetNumber": {
+                  "type": "string",
+                  "maxLength": 12,
+                  "description": "Main Asset Number"
+                },
+                "subNumber": {
+                  "type": "string",
+                  "maxLength": 4,
+                  "description": "Asset Subnumber"
+                },
+                "orderId": {
+                  "type": "string",
+                  "maxLength": 12,
+                  "description": "Order Number"
+                },
+                "salesOrder": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "Sales Order Number"
+                },
+                "salesOrderItem": {
+                  "type": "string",
+                  "pattern": "\\d+",
+                  "maxLength": 6,
+                  "description": "Item Number in Sales Order"
+                },
+                "scheduleLine": {
+                  "type": "string",
+                  "pattern": "\\d+",
+                  "maxLength": 4,
+                  "description": "Delivery Schedule for Sales Order"
+                },
+                "controllingArea": {
+                  "type": "string",
+                  "maxLength": 4,
+                  "description": "Controlling Area"
+                },
+                "tradingPartBA": {
+                  "type": "string",
+                  "maxLength": 4,
+                  "description": "Trading Partner's Business Area"
+                },
+                "realStateKey": {
+                  "type": "string",
+                  "maxLength": 8,
+                  "description": "Internal Key for Real Estate Object"
+                },
+                "costObject": {
+                  "type": "string",
+                  "maxLength": 12,
+                  "description": "Cost Object"
+                },
+                "profitCenter": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "Profit Center"
+                },
+                "wBS": {
+                  "type": "string",
+                  "pattern": "\\d+",
+                  "maxLength": 8,
+                  "description": "Work Breakdown Structure Element (WBS Element)"
+                },
+                "network": {
+                  "type": "string",
+                  "maxLength": 12,
+                  "description": "Network Number for Account Assignment"
+                },
+                "activity": {
+                  "type": "string",
+                  "maxLength": 4,
+                  "description": "Operation/Activity Number"
+                },
+                "rountingNumber": {
+                  "type": "string",
+                  "pattern": "\\d+",
+                  "maxLength": 10,
+                  "description": "Routing number of operations in the order"
+                },
+                "counter": {
+                  "type": "string",
+                  "pattern": "\\d+",
+                  "maxLength": 8,
+                  "description": "Internal counter"
+                },
+                "partner": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "Partner Account Number"
+                },
+                "recoveryIndicator": {
+                  "type": "string",
+                  "maxLength": 2,
+                  "description": "Internal Recovery Indicator"
+                },
+                "funcionalArea": {
+                  "type": "string",
+                  "maxLength": 4,
+                  "description": "Functional Area"
+                },
+                "receivingPlant": {
+                  "type": "string",
+                  "maxLength": 4,
+                  "description": "Receiving/Issuing Plant"
+                },
+                "receivingStorageLocation": {
+                  "type": "string",
+                  "maxLength": 4,
+                  "description": "Receiving/Issuing Storage Location"
+                },
+                "businessProcess": {
+                  "type": "string",
+                  "maxLength": 12,
+                  "description": "Business Process"
+                },
+                "activityType": {
+                  "type": "string",
+                  "maxLength": 6,
+                  "description": "Activity Type"
+                },
+                "specialStockIndicator": {
+                  "type": "string",
+                  "maxLength": 1,
+                  "description": "Special Stock Indicator for Physical Stock Transfer"
+                },
+                "vendor": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "Account Number of Vendor or Creditor"
+                },
+                "wBSElement": {
+                  "type": "string",
+                  "maxLength": 24,
+                  "description": "Work Breakdown Structure Element (WBS Element)"
+                },
+                "funcionalAreaLong": {
+                  "type": "string",
+                  "maxLength": 16,
+                  "description": "Functional Area"
+                }
+              }
+            },
+            "reservationForProfitabilitySegment": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "fIELDNAME": {
+                    "type": "string",
+                    "maxLength": 30,
+                    "description": "Field Name"
+                  },
+                  "vALUE": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "description": "CO-PA characteristic value"
+                  }
+                }
+              }
+            },
+            "customerEnhancementsOfImportInterface": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "sTRUCTURE": {
+                    "type": "string",
+                    "maxLength": 30,
+                    "description": "Structure name of  BAPI table extension"
+                  },
+                  "vALUEPART1": {
+                    "type": "string",
+                    "maxLength": 240,
+                    "description": "Data part of BAPI extension parameter"
+                  },
+                  "vALUEPART2": {
+                    "type": "string",
+                    "maxLength": 240,
+                    "description": "Data part of BAPI extension parameter"
+                  },
+                  "vALUEPART3": {
+                    "type": "string",
+                    "maxLength": 240,
+                    "description": "Data part of BAPI extension parameter"
+                  },
+                  "vALUEPART4": {
+                    "type": "string",
+                    "maxLength": 240,
+                    "description": "Data part of BAPI extension parameter"
+                  }
+                }
+              }
+            },
+            "testMode": {
+              "type": "boolean",
+              "description": "Execute in Test Mode"
+            },
+            "aTPCheck": {
+              "type": "boolean",
+              "description": "Availability Overview"
+            },
+            "calCheck": {
+              "type": "boolean"
+            },
+            "externalReservationNumber": {
+              "type": "string",
+              "pattern": "\\d+",
+              "maxLength": 10,
+              "description": "External Reservation Number"
+            }
+          },
+          "required": [
+            "reservationItemFields",
+            "reservationHeaderFields"
+          ]
+        }
+      },
+      "required": [
+        "reservation"
+      ]
     }
   },
-  "required": ["Name", "Age"]
+  "required": [
+    "createRequest"
+  ]
 } 
