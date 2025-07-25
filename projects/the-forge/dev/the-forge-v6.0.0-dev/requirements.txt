@@ -1,0 +1,5 @@
+openpyxl
+jsonschema 
+flet
+pillow 
+PySide6 
