@@ -1,0 +1,4 @@
+openpyxl
+jsonschema 
+pillow 
+PySide6 

@@ -1,8 +1,0 @@
-.env
-falha_*.png
-__pycache__/
-*.pyc
-*.pyo
-*.log
-.cache/
-.pytest_cache/ 
