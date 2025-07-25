@@ -1,5 +1,4 @@
 import openpyxl
-import os
 
 class ExcelMappingService:
     def __init__(self, max_structure_depth=8):
@@ -74,19 +73,4 @@ class ExcelMappingService:
         for i, src in enumerate(source_paths):
             tgt = target_paths[i] if i < len(target_paths) else ''
             mapping_rows.append({'Source Path': src, 'Target Path': tgt})
-        return mapping_rows
-
-if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description='Parse mapping Excel file and list sheets/structures.')
-    parser.add_argument('file', help='Mapping Excel file')
-    parser.add_argument('--list-sheets', action='store_true')
-    parser.add_argument('--sheet', help='Sheet name to load')
-    args = parser.parse_args()
-
-    service = ExcelMappingService()
-    if args.list_sheets:
-        print(service.list_sheets(args.file))
-    else:
-        service.load_mapping_file(args.file, args.sheet)
-        print(service.mapping_data) 
+        return mapping_rows 

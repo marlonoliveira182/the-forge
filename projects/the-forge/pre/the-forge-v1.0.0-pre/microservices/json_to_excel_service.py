@@ -1,6 +1,5 @@
 import json
 import openpyxl
-import os
 from .excel_mapping_service import ExcelMappingService
 
 class JSONToExcelService:
@@ -32,16 +31,4 @@ class JSONToExcelService:
         ws.append(['', ''])  # Second header row blank for now
         for row in mapping_rows:
             ws.append([row.get('Source Path', ''), row.get('Target Path', '')])
-        wb.save(output_file)
-
-if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description='Convert JSON Schema to Excel mapping file.')
-    parser.add_argument('json_schema', help='Input JSON Schema file')
-    parser.add_argument('output', help='Output Excel file')
-    args = parser.parse_args()
-
-    service = JSONToExcelService()
-    mapping_rows = service.generate_mapping_rows(args.json_schema)
-    service.export_to_excel(mapping_rows, args.output)
-    print(f'Excel mapping file exported to {args.output}') 
+        wb.save(output_file) 

@@ -1,6 +1,5 @@
 import xml.etree.ElementTree as ET
 import json
-import os
 
 XSD_NS = '{http://www.w3.org/2001/XMLSchema}'
 
@@ -56,28 +55,4 @@ class XSDJSONConverterService:
         schema_elem = ET.Element(XSD_NS+'schema', attrib={'xmlns:xsd': 'http://www.w3.org/2001/XMLSchema'})
         for name, definition in schema.get('properties', {}).items():
             schema_elem.append(build_element(name, definition))
-        return ET.tostring(schema_elem, encoding='unicode')
-
-if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description='Convert XSD <-> JSON Schema.')
-    parser.add_argument('--xsd-to-json', help='Input XSD file to convert to JSON Schema')
-    parser.add_argument('--json-to-xsd', help='Input JSON Schema file to convert to XSD')
-    parser.add_argument('--output', help='Output file')
-    args = parser.parse_args()
-
-    service = XSDJSONConverterService()
-    if args.xsd_to_json:
-        jschema = service.xsd_to_json_schema(args.xsd_to_json)
-        if args.output:
-            with open(args.output, 'w', encoding='utf-8') as f:
-                json.dump(jschema, f, ensure_ascii=False, indent=2)
-        else:
-            print(json.dumps(jschema, ensure_ascii=False, indent=2))
-    elif args.json_to_xsd:
-        xsd_str = service.json_schema_to_xsd(args.json_to_xsd)
-        if args.output:
-            with open(args.output, 'w', encoding='utf-8') as f:
-                f.write(xsd_str)
-        else:
-            print(xsd_str) 
+        return ET.tostring(schema_elem, encoding='unicode') 

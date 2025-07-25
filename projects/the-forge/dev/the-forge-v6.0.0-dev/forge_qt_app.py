@@ -3,10 +3,11 @@ import os
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QLineEdit,
     QFileDialog, QTextEdit, QFrame, QToolButton, QCheckBox, QMessageBox, QStackedWidget, QListWidget, QListWidgetItem,
-    QSplitter, QStatusBar, QSizePolicy
+    QSplitter, QStatusBar, QSizePolicy, QTreeView, QFileSystemModel, QTabWidget, QSpacerItem, QSizePolicy, QLineEdit, QPushButton, QFileDialog, QListWidget, QListWidgetItem, QHBoxLayout, QVBoxLayout, QLabel, QWidget, QGroupBox, QAbstractItemView, QFrame, QToolButton, QGraphicsDropShadowEffect
 )
-from PySide6.QtGui import QIcon, QFont, QFontDatabase
-from PySide6.QtCore import Qt, QSize, Signal
+from PySide6.QtGui import QIcon, QFont, QFontDatabase, QPixmap, QColor
+from PySide6.QtWidgets import QStyle
+from PySide6.QtCore import Qt, QSize, Signal, QTimer, QPropertyAnimation, QByteArray
 from microservices.wsdl_to_xsd_extractor import merge_xsd_from_wsdl
 import traceback
 from microservices.excel_export_service import ExcelExporter
@@ -15,6 +16,8 @@ import difflib
 from openpyxl.utils import get_column_letter
 from microservices.excel_output_validator import validate_excel_output, log_to_ui as validator_log_to_ui
 import threading
+import xml.etree.ElementTree as ET
+import openpyxl
 
 ASSETS_DIR = os.path.join(os.path.dirname(__file__), 'assets')
 ICONS_DIR = os.path.join(ASSETS_DIR, 'Icons_SVG', '_M', 'Actions')
@@ -45,6 +48,190 @@ def get_icon(icon_name):
         path = os.path.join(ICONS_DIR, 'actions_edit_M.svg')
     return QIcon(path)
 
+class DraggableLineEdit(QLineEdit):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setAcceptDrops(True)
+        self._on_file_dropped = None
+    def set_on_file_dropped(self, callback):
+        self._on_file_dropped = callback
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            super().dragEnterEvent(event)
+    def dropEvent(self, event):
+        if event.mimeData().hasUrls():
+            urls = event.mimeData().urls()
+            if urls:
+                path = urls[0].toLocalFile()
+                self.setText(path)
+                if self._on_file_dropped:
+                    self._on_file_dropped(path)
+            event.acceptProposedAction()
+        else:
+            super().dropEvent(event)
+
+class DropZone(QFrame):
+    def __init__(self, label_text, file_ext, on_file_selected, parent=None):
+        super().__init__(parent)
+        self.icon_label = QLabel()  # Ensure this is created first
+        self.icon_label.setAlignment(Qt.AlignCenter)
+        self.icon_label.setStyleSheet('border: none; background: none;')
+        self.setFrameShape(QFrame.StyledPanel)
+        self.setAcceptDrops(True)
+        self.file_filter = file_ext
+        self.on_file_selected = on_file_selected
+        self.file_path = None
+        # Use a modern upload icon from assets (fallback to folder if not found)
+        icon_path = os.path.join(os.path.dirname(__file__), 'assets', 'upload.png')
+        if not os.path.exists(icon_path):
+            icon_path = os.path.join(os.path.dirname(__file__), 'assets', 'folder.png')
+        # Add to the end of _init_ui or after main window setup
+        self.setStyleSheet(self.styleSheet() + """
+            QPushButton {
+                border-radius: 5px;
+                background: #263CC8;
+                color: #fff;
+                font-family: 'Mulish';
+                font-size: 13px;
+                padding: 6px 14px;
+                border: none;
+                transition: background 0.2s;
+            }
+            QPushButton#primary {
+                background: #28FF52;
+                color: #212E3E;
+            }
+            QPushButton:hover {
+                background: #4A90E2;
+                color: #fff;
+            }
+            QPushButton:focus {
+                outline: 2px solid #4A90E2;
+            }
+            QFrame:focus {
+                outline: 2px solid #4A90E2;
+            }
+            QTextEdit[logarea="true"] {
+                background: #f7f7fa;
+                border-radius: 6px;
+                border: 1.2px solid #e0e4ea;
+                color: #263CC8;
+                font-family: 'Mulish';
+                font-size: 11px;
+            }
+        """)
+        # In DropZone, prefer SVG if available
+        icon_path_svg = os.path.join(os.path.dirname(__file__), 'assets', 'upload.svg')
+        if os.path.exists(icon_path_svg):
+            pixmap = QPixmap(icon_path_svg).scaled(28, 28, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self.icon_label.setPixmap(pixmap)
+        elif os.path.exists(icon_path):
+            pixmap = QPixmap(icon_path).scaled(28, 28, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self.icon_label.setPixmap(pixmap)
+        else:
+            self.icon_label.clear()
+        # Main label: modern, readable, EDP colors
+        self.label_main = QLabel()
+        self.label_main.setAlignment(Qt.AlignCenter)
+        self.label_main.setText(
+            '<span style="color:#263CC8;font-size:13px;">Drop files here or '
+            '<b style="color:#212E3E;">Browse files</b></span>'
+        )
+        self.label_main.setTextFormat(Qt.RichText)
+        self.label_main.setFont(QFont('Mulish', 13))
+        self.label_main.setStyleSheet('border: none; background: none;')
+        # Layout
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(8, 16, 8, 16)
+        layout.setSpacing(8)
+        if self.icon_label.pixmap() is not None and not self.icon_label.pixmap().isNull():
+            layout.addStretch(1)
+            layout.addWidget(self.icon_label, alignment=Qt.AlignHCenter)
+            layout.addWidget(self.label_main, alignment=Qt.AlignHCenter)
+            layout.addStretch(1)
+        else:
+            layout.addStretch(1)
+            layout.addWidget(self.label_main, alignment=Qt.AlignHCenter)
+            layout.addStretch(1)
+        self.setMinimumHeight(40)
+        self.setMinimumWidth(180)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setToolTip("Drag and drop an XSD file here, or click to select from disk.")
+        self._set_default_style()
+    def _set_default_style(self):
+        self.setStyleSheet("""
+            QFrame {
+                border: 2px dashed #28FF52;
+                border-radius: 8px;
+                background: #fff;
+            }
+        """)
+        self.label_main.setStyleSheet('border: none; background: none; color: #263CC8;')
+    def _set_hover_style(self):
+        self.setStyleSheet("""
+            QFrame {
+                border: 2px dashed #263CC8;
+                border-radius: 8px;
+                background: #f8faff;
+            }
+        """)
+        self.label_main.setStyleSheet('border: none; background: none; color: #263CC8;')
+    def _set_active_style(self):
+        self.setStyleSheet("""
+            QFrame {
+                border: 2px dashed #212E3E;
+                border-radius: 8px;
+                background: #f7f7fa;
+            }
+        """)
+        self.label_main.setStyleSheet('border: none; background: none; color: #212E3E;')
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            urls = event.mimeData().urls()
+            if urls and urls[0].toLocalFile().lower().endswith(self.file_filter):
+                event.acceptProposedAction()
+                self._set_hover_style()
+            else:
+                event.ignore()
+        else:
+            event.ignore()
+    def dragLeaveEvent(self, event):
+        self._set_default_style()
+    def dropEvent(self, event):
+        self._set_active_style()
+        if event.mimeData().hasUrls():
+            path = event.mimeData().urls()[0].toLocalFile()
+            if path.lower().endswith(self.file_filter):
+                self.set_file(path)
+        QTimer.singleShot(400, self._set_default_style)
+    def mousePressEvent(self, event):
+        path, _ = QFileDialog.getOpenFileName(self, "Browse files", os.path.expanduser("~"), f"XSD Files (*{self.file_filter})")
+        if path:
+            self.set_file(path)
+    def set_file(self, path):
+        self.file_path = path
+        name = os.path.basename(path)
+        # Use high-contrast color for file name
+        self.label_main.setText(
+            f'<span style="color:#212E3E;font-size:13px;">{name}</span>'
+        )
+        self.label_main.setTextFormat(Qt.RichText)
+        self.label_main.setStyleSheet('border: none; background: none; color: #212E3E;')
+        self._set_active_style()
+        if self.on_file_selected:
+            self.on_file_selected(path)
+    def clear(self):
+        self.file_path = None
+        self.label_main.setText(
+            '<span style="color:#263CC8;font-size:13px;">Drop files here or '
+            '<b style="color:#212E3E;">Browse files</b></span>'
+        )
+        self.label_main.setTextFormat(Qt.RichText)
+        self.label_main.setStyleSheet('border: none; background: none; color: #263CC8;')
+        self._set_default_style()
+
 class ForgeMainWindow(QMainWindow):
     log_signal = Signal(str, str)  # message, level
     def __init__(self):
@@ -58,6 +245,7 @@ class ForgeMainWindow(QMainWindow):
         self.target_path_full = ''
         self.output_path_full = ''
         self.log_signal.connect(self._log)
+        self.working_folder = ''
 
     def _load_fonts(self):
         for font_file in os.listdir(FONT_DIR):
@@ -70,89 +258,90 @@ class ForgeMainWindow(QMainWindow):
         splitter.setOrientation(Qt.Horizontal)
         self.setCentralWidget(splitter)
 
-        # Sidebar
-        sidebar = QWidget()
-        sidebar.setObjectName("sidebarPanel")
-        sidebar.setFixedWidth(200)
-        sidebar_layout = QVBoxLayout(sidebar)
-        sidebar_layout.setContentsMargins(0, 0, 0, 0)
-        sidebar_layout.setSpacing(0)
-        logo_row = QHBoxLayout()
-        logo = QLabel()
-        if os.path.exists(LOGO_PATH):
-            logo.setPixmap(QIcon(LOGO_PATH).pixmap(36, 36))
-        logo_row.addWidget(logo)
-        app_name = QLabel("The Forge")
-        app_name.setFont(QFont('Mulish', 16, QFont.Bold))
-        app_name.setStyleSheet(f"color: {EDP_COLORS['electric_green']}; margin-left: 8px;")
-        logo_row.addWidget(app_name)
-        logo_row.addStretch()
-        logo_widget = QWidget()
-        logo_widget.setLayout(logo_row)
-        logo_widget.setFixedHeight(56)
-        sidebar_layout.addWidget(logo_widget)
-        self.nav_list = QListWidget()
-        self.nav_list.setObjectName("sidebarNav")
-        self.nav_list.setIconSize(QSize(24, 24))
-        for section, icon in SECTIONS:
-            self.nav_list.addItem(QListWidgetItem(get_icon(icon), section))
-        self.nav_list.setCurrentRow(0)
-        self.nav_list.currentRowChanged.connect(self._on_nav_changed)
-        self.nav_list.setStyleSheet(f"font-size: 15px; border: none;")
-        sidebar_layout.addWidget(self.nav_list)
-        sidebar_layout.addStretch()
-        splitter.addWidget(sidebar)
-
-        # Main content area (stacked)
-        self.stack = QStackedWidget()
-        self.stack.setObjectName("mainPanel")
-        splitter.addWidget(self.stack)
-        splitter.setStretchFactor(1, 1)
-
-        # Top bar
+        # --- Topbar with Centered Tabs ---
         topbar = QFrame()
         topbar.setFrameShape(QFrame.StyledPanel)
         topbar.setStyleSheet(f"background: {EDP_COLORS['marine_blue_light']};")
         topbar_layout = QHBoxLayout(topbar)
-        topbar_layout.setContentsMargins(24, 8, 24, 8)
-        self.breadcrumb = QLabel(SECTIONS[0][0])
-        self.breadcrumb.setFont(QFont('Mulish', 12, QFont.Bold))
-        self.breadcrumb.setStyleSheet(f"color: {EDP_COLORS['electric_green']};")
-        topbar_layout.addWidget(self.breadcrumb)
-        topbar_layout.addStretch()
+        topbar_layout.setContentsMargins(12, 4, 12, 4)  # Reduced margins
+        # Left spacer
+        topbar_layout.addItem(QSpacerItem(20, 10, QSizePolicy.Expanding, QSizePolicy.Minimum))
+        self.tabs = QTabWidget()
+        self.tabs.setTabPosition(QTabWidget.North)
+        self.tabs.setMovable(False)
+        self.tabs.setDocumentMode(True)
+        self.tabs.setStyleSheet(f"QTabBar::tab {{ font-family: 'Mulish'; font-size: 13px; padding: 6px 14px; }} QTabBar::tab:selected {{ background: {EDP_COLORS['electric_green']}; color: {EDP_COLORS['marine_blue']}; }} QTabBar::tab:!selected {{ background: {EDP_COLORS['marine_blue_light']}; color: {EDP_COLORS['white']}; }}")
+        topbar_layout.addWidget(self.tabs)
+        # Right spacer
+        topbar_layout.addItem(QSpacerItem(20, 10, QSizePolicy.Expanding, QSizePolicy.Minimum))
         self.theme_toggle = QCheckBox("Dark Mode")
         self.theme_toggle.setChecked(True)
         self.theme_toggle.stateChanged.connect(self._toggle_theme)
-        self.theme_toggle.setStyleSheet(f"font-size: 14px; color: {EDP_COLORS['white']}; margin-right: 12px;")
+        self.theme_toggle.setStyleSheet(f"font-size: 12px; color: {EDP_COLORS['white']}; margin-right: 8px;")
         topbar_layout.addWidget(self.theme_toggle)
         help_btn = QToolButton()
         help_btn.setIcon(get_icon('actions_more_info_M.svg'))
         help_btn.setToolTip("About")
-        help_btn.clicked.connect(lambda: self._on_nav_changed(2))
+        help_btn.clicked.connect(lambda: self.tabs.setCurrentIndex(2))
         topbar_layout.addWidget(help_btn)
-        topbar.setMaximumHeight(48)
+        topbar.setMaximumHeight(36)
         self.addToolBar(Qt.TopToolBarArea, self._wrap_toolbar(topbar))
 
         # Section widgets (order must match SECTIONS)
         self.mapping_widget = self._build_mapping_section()
         self.wsdl2xsd_widget = self._build_wsdl2xsd_section()
         self.about_widget = self._build_about_section()
-        self.stack.addWidget(self.mapping_widget)
-        self.stack.addWidget(self.wsdl2xsd_widget)
-        self.stack.addWidget(self.about_widget)
+        self.tabs.addTab(self.mapping_widget, "Mapping")
+        self.tabs.addTab(self.wsdl2xsd_widget, "WSDL to XSD")
+        self.tabs.addTab(self.about_widget, "About")
+        self.tabs.currentChanged.connect(self._on_tab_changed)
+        splitter.addWidget(self.tabs)
+        splitter.setStretchFactor(0, 1)
 
         # Status bar
         self.status = QStatusBar()
         self.setStatusBar(self.status)
         self._apply_theme()
+        self.setStyleSheet(self.styleSheet() + """
+            QPushButton {
+                border-radius: 5px;
+                background: #263CC8;
+                color: #fff;
+                font-family: 'Mulish';
+                font-size: 13px;
+                padding: 6px 14px;
+                border: none;
+                transition: background 0.2s;
+            }
+            QPushButton#primary {
+                background: #28FF52;
+                color: #212E3E;
+            }
+            QPushButton:hover {
+                background: #4A90E2;
+                color: #fff;
+            }
+            QPushButton:focus {
+                outline: 2px solid #4A90E2;
+            }
+            QFrame:focus {
+                outline: 2px solid #4A90E2;
+            }
+            QTextEdit[logarea="true"] {
+                background: #f7f7fa;
+                border-radius: 6px;
+                border: 1.2px solid #e0e4ea;
+                color: #263CC8;
+                font-family: 'Mulish';
+                font-size: 11px;
+            }
+        """)
 
     def _toggle_theme(self):
         self._apply_theme()
 
-    def _on_nav_changed(self, idx):
-        self.stack.setCurrentIndex(idx)
-        self.breadcrumb.setText(SECTIONS[idx][0])
-        self.status.showMessage(f"{SECTIONS[idx][0]} selected", 2000)
+    def _on_tab_changed(self, idx):
+        self.status.showMessage(f"{self.tabs.tabText(idx)} selected", 2000)
 
     def _apply_theme(self):
         if self.theme_toggle.isChecked():
@@ -189,41 +378,88 @@ class ForgeMainWindow(QMainWindow):
     def _build_mapping_section(self):
         w = QWidget()
         layout = QVBoxLayout(w)
-        layout.setContentsMargins(48, 48, 48, 48)
-        layout.setSpacing(20)
-        # File pickers row
-        file_row = QHBoxLayout()
-        file_row.setSpacing(16)
-        self.source_path = QLineEdit()
-        self.source_path.setPlaceholderText("Select source schema (.xsd)")
-        self.source_path.setReadOnly(True)
-        file_row.addWidget(self._file_picker(self.source_path, self._pick_source, "Source", get_icon('actions_file_upload_M.svg')))
-        self.target_path = QLineEdit()
-        self.target_path.setPlaceholderText("Select target schema (.xsd)")
-        self.target_path.setReadOnly(True)
-        file_row.addWidget(self._file_picker(self.target_path, self._pick_target, "Target", get_icon('actions_file_upload_M.svg')))
+        layout.setContentsMargins(16, 16, 16, 16)  # Reduced margins
+        layout.setSpacing(10)  # Reduced spacing
+        # --- Dropzones ---
+        drop_row = QHBoxLayout()
+        drop_row.setSpacing(8)
+        self.src_drop = DropZone("Drop files here or Browse files", ".xsd", self._on_src_selected)
+        self.tgt_drop = DropZone("Drop files here or Browse files", ".xsd", self._on_tgt_selected)
+        self.src_drop.setMinimumHeight(60)
+        self.tgt_drop.setMinimumHeight(60)
+        drop_row.addWidget(self.src_drop)
+        drop_row.addWidget(self.tgt_drop)
+        layout.addLayout(drop_row)
+        # Output folder selection
+        output_row = QHBoxLayout()
+        output_row.setSpacing(6)
+        self.output_folder_line = QLineEdit()
+        self.output_folder_line.setReadOnly(True)
+        self.output_folder_line.setPlaceholderText("Select output folder...")
+        self.output_folder_line.setMinimumHeight(24)
+        output_folder_btn = QPushButton("Select Output Folder")
+        output_folder_btn.setMinimumHeight(24)
+        output_folder_btn.clicked.connect(self._select_output_folder)
+        output_row.addWidget(self.output_folder_line)
+        output_row.addWidget(output_folder_btn)
+        layout.addLayout(output_row)
+        # Output path (auto-generated)
         self.output_path = QLineEdit()
-        self.output_path.setPlaceholderText("Select output mapping file (.xlsx)")
         self.output_path.setReadOnly(True)
-        file_row.addWidget(self._file_picker(self.output_path, self._pick_output, "Output", get_icon('actions_file_download_M.svg'), save=True))
-        layout.addLayout(file_row)
+        self.output_path.setPlaceholderText("Output mapping file will be auto-named here.")
+        self.output_path.setMinimumHeight(24)
+        layout.addWidget(QLabel("Output Mapping File:"))
+        layout.addWidget(self.output_path)
         # Generate button
         self.generate_btn = QPushButton("Generate Mapping")
-        self.generate_btn.setFont(QFont('Mulish', 13, QFont.Bold))
+        self.generate_btn.setFont(QFont('Mulish', 11, QFont.Bold))
+        self.generate_btn.setMinimumHeight(28)
         self.generate_btn.clicked.connect(self._on_generate)
+        self.generate_btn.setEnabled(False)
         layout.addWidget(self.generate_btn)
-        # Status label
         self.status_label = QLabel("")
-        self.status_label.setFont(QFont('Mulish', 11, QFont.Medium))
+        self.status_label.setFont(QFont('Mulish', 10, QFont.Medium))
         layout.addWidget(self.status_label)
-        # Log output
         self.log_text = QTextEdit()
-        self.log_text.setFont(QFont('Mulish', 10))
+        self.log_text.setFont(QFont('Mulish', 9))
         self.log_text.setReadOnly(True)
-        self.log_text.setMinimumHeight(100)
+        self.log_text.setMinimumHeight(60)
+        self.log_text.setProperty('logarea', True)
         layout.addWidget(self.log_text)
-        layout.addStretch()
+        # layout.addStretch()  # Remove excessive stretch
         return w
+
+    def _select_output_folder(self):
+        folder = QFileDialog.getExistingDirectory(self, "Select Output Folder", os.path.expanduser("~"))
+        if folder:
+            self.output_folder_line.setText(folder)
+            self.output_folder = folder
+            self._update_output_path()
+
+    def _on_src_selected(self, path):
+        self.source_path_full = path
+        self._update_output_path()
+
+    def _on_tgt_selected(self, path):
+        self.target_path_full = path
+        self._update_output_path()
+
+    def _update_output_path(self):
+        src = getattr(self, 'source_path_full', None)
+        tgt = getattr(self, 'target_path_full', None)
+        output_folder = getattr(self, 'output_folder', None)
+        # Allow source and target to be the same
+        if src and tgt and output_folder:
+            src_name = os.path.splitext(os.path.basename(src))[0]
+            tgt_name = os.path.splitext(os.path.basename(tgt))[0]
+            out_name = f"mapping_{src_name}_to_{tgt_name}.xlsx"
+            out_path = os.path.join(output_folder, out_name)
+            self.output_path.setText(out_path)
+            self.output_path_full = out_path
+            self.generate_btn.setEnabled(True)
+        else:
+            self.output_path.clear()
+            self.generate_btn.setEnabled(False)
 
     def _file_picker(self, line_edit, pick_cmd, label, icon, save=False):
         w = QWidget()
@@ -460,86 +696,137 @@ class ForgeMainWindow(QMainWindow):
     def _build_about_section(self):
         w = QWidget()
         layout = QVBoxLayout(w)
-        layout.setContentsMargins(48, 48, 48, 48)
-        layout.setSpacing(20)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(8)
         title = QLabel("About The Forge")
-        title.setFont(QFont('Mulish', 16, QFont.Bold))
+        title.setFont(QFont('Mulish', 14, QFont.Bold))
         layout.addWidget(title)
         subtitle = QLabel("EDP Schema Mapping Tool\nVersion 5.0.0\nBuilt with PySide6 and EDP Design System.")
-        subtitle.setFont(QFont('Mulish', 11))
+        subtitle.setFont(QFont('Mulish', 10))
         layout.addWidget(subtitle)
-        layout.addStretch()
+        # layout.addStretch()  # Remove excessive stretch
         return w
 
     def _build_wsdl2xsd_section(self):
         w = QWidget()
         layout = QVBoxLayout(w)
-        layout.setContentsMargins(48, 48, 48, 48)
-        layout.setSpacing(20)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(8)
         title = QLabel("WSDL to XSD")
-        title.setFont(QFont('Mulish', 16, QFont.Bold))
-        layout.addWidget(title)
+        title.setFont(QFont('Mulish', 14, QFont.Bold))
+        layout.addWidget(title, alignment=Qt.AlignHCenter)
         subtitle = QLabel("Convert WSDL to XSD for EDP Schema Mapping.")
-        subtitle.setFont(QFont('Mulish', 11))
-        layout.addWidget(subtitle)
-        # WSDL input area
+        subtitle.setFont(QFont('Mulish', 10))
+        layout.addWidget(subtitle, alignment=Qt.AlignHCenter)
+        # DropZone for WSDL input
+        self.wsdl_drop = DropZone("Drop WSDL file here or Browse files", ".wsdl", self._on_wsdl_selected)
+        self.wsdl_drop.setMinimumWidth(240)
+        self.wsdl_drop.setMaximumWidth(400)
+        self.wsdl_drop.setMinimumHeight(60)
+        layout.addWidget(self.wsdl_drop, alignment=Qt.AlignHCenter)
+        layout.addSpacing(6)
+        # Splitter for WSDL input and XSD output
+        splitter = QHBoxLayout()
+        splitter.setSpacing(8)
         self.wsdl_input = QTextEdit()
-        self.wsdl_input.setPlaceholderText("Paste WSDL content here...")
-        self.wsdl_input.setMinimumHeight(120)
-        layout.addWidget(self.wsdl_input)
-        # File upload
-        file_row = QHBoxLayout()
-        self.wsdl_file_path = QLineEdit()
-        self.wsdl_file_path.setPlaceholderText("Or select a .wsdl file...")
-        self.wsdl_file_path.setReadOnly(True)
-        file_row.addWidget(self.wsdl_file_path)
-        browse_btn = QPushButton("Browse")
-        browse_btn.clicked.connect(self._pick_wsdl_file)
-        file_row.addWidget(browse_btn)
-        layout.addLayout(file_row)
-        # Extract button
-        extract_btn = QPushButton("Extract XSD")
-        extract_btn.setObjectName("primary")
-        extract_btn.clicked.connect(self._on_extract_xsd)
-        layout.addWidget(extract_btn)
-        # Output area
+        self.wsdl_input.setPlaceholderText("Paste WSDL content here or drop a file above...")
+        self.wsdl_input.setMinimumWidth(180)
+        self.wsdl_input.setFont(QFont('Mulish', 10))
+        self.wsdl_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        splitter.addWidget(self.wsdl_input, stretch=1)
         self.xsd_output = QTextEdit()
         self.xsd_output.setPlaceholderText("Merged XSD will appear here...")
-        self.xsd_output.setMinimumHeight(180)
-        layout.addWidget(self.xsd_output)
+        self.xsd_output.setMinimumWidth(180)
+        self.xsd_output.setFont(QFont('Mulish', 10))
+        self.xsd_output.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        splitter.addWidget(self.xsd_output, stretch=1)
+        layout.addLayout(splitter)
+        layout.addSpacing(6)
+        # Buttons row
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(8)
+        btn_row.addStretch(1)
+        extract_btn = QPushButton("Extract XSD")
+        extract_btn.setObjectName("primary")
+        extract_btn.setMinimumWidth(90)
+        extract_btn.setMinimumHeight(24)
+        extract_btn.clicked.connect(self._on_extract_xsd)
+        btn_row.addWidget(extract_btn)
+        btn_row.addSpacing(8)
+        download_btn = QPushButton("Download XSD")
+        download_btn.setMinimumWidth(90)
+        download_btn.setMinimumHeight(24)
+        download_btn.clicked.connect(self._on_download_xsd)
+        btn_row.addWidget(download_btn)
+        btn_row.addStretch(1)
+        layout.addLayout(btn_row)
+        layout.addSpacing(6)
         # Log output area for this tab
         self.wsdl2xsd_log_text = QTextEdit()
         self.wsdl2xsd_log_text.setReadOnly(True)
-        self.wsdl2xsd_log_text.setMinimumHeight(80)
+        self.wsdl2xsd_log_text.setMinimumHeight(40)
         self.wsdl2xsd_log_text.setPlaceholderText("Log output for WSDL to XSD extraction...")
+        self.wsdl2xsd_log_text.setProperty('logarea', True)
         layout.addWidget(self.wsdl2xsd_log_text)
-        # Download button
-        download_btn = QPushButton("Download XSD")
-        download_btn.clicked.connect(self._on_download_xsd)
-        layout.addWidget(download_btn)
-        layout.addStretch()
+        # layout.addStretch()  # Remove excessive stretch
         return w
 
-    def _pick_wsdl_file(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Select WSDL File", "", "WSDL Files (*.wsdl)")
-        if path:
-            self.wsdl_file_path.setText(path)
+    def log_to_wsdl_ui(self, message: str):
+        if hasattr(self, 'wsdl2xsd_log_text') and self.wsdl2xsd_log_text:
+            self.wsdl2xsd_log_text.append(message)
+
+    def _on_wsdl_selected(self, path):
+        # Load the WSDL file content into the input area
+        try:
             with open(path, 'r', encoding='utf-8') as f:
-                self.wsdl_input.setPlainText(f.read())
+                content = f.read()
+            self.wsdl_input.setPlainText(content)
+            self.log_to_wsdl_ui(f"✅ Loaded WSDL file: {os.path.basename(path)}")
+        except Exception as e:
+            self.log_to_wsdl_ui(f"❌ Error reading WSDL file: {e}")
 
     def _on_extract_xsd(self):
         wsdl_content = self.wsdl_input.toPlainText()
         if not wsdl_content.strip():
-            QMessageBox.warning(self, "No WSDL", "Please paste WSDL content or select a file.")
+            self.log_to_wsdl_ui("❌ Error: Please paste WSDL content or drop a file.")
             return
         try:
             merged_xsd = merge_xsd_from_wsdl(wsdl_content)
             self.xsd_output.setPlainText(merged_xsd)
+            self.log_to_wsdl_ui("✅ XSD extraction successful.")
+            # --- Compare fields logic ---
+            # Extract all element/attribute names from generated XSD
+            try:
+                xsd_root = ET.fromstring(merged_xsd)
+                xsd_fields = set()
+                for elem in xsd_root.iter():
+                    if elem.tag.endswith('element') or elem.tag.endswith('attribute'):
+                        name = elem.get('name')
+                        if name:
+                            xsd_fields.add(name)
+                # Try to extract XSD from WSDL (look for <types> or <schema> section)
+                wsdl_root = ET.fromstring(wsdl_content)
+                wsdl_fields = set()
+                for schema in wsdl_root.iter():
+                    if schema.tag.endswith('schema'):
+                        for elem in schema.iter():
+                            if elem.tag.endswith('element') or elem.tag.endswith('attribute'):
+                                name = elem.get('name')
+                                if name:
+                                    wsdl_fields.add(name)
+                missing_fields = wsdl_fields - xsd_fields
+                if missing_fields:
+                    for field in sorted(missing_fields):
+                        self.log_to_wsdl_ui(f"❌ Missing field in generated XSD: {field}")
+                    self.log_to_wsdl_ui(f"⚠️ {len(missing_fields)} field(s) missing in generated XSD compared to WSDL input.")
+                else:
+                    self.log_to_wsdl_ui("✅ All fields from WSDL are present in the generated XSD.")
+            except Exception as e:
+                self.log_to_wsdl_ui(f"⚠️ Field comparison failed: {e}")
         except Exception as e:
             import traceback
             error_msg = f"Extraction Error: {e}\n{traceback.format_exc()}"
-            self.wsdl2xsd_log_text.append(error_msg)
-            QMessageBox.critical(self, "Extraction Error", str(e))
+            self.log_to_wsdl_ui(error_msg)
 
     def _on_download_xsd(self):
         xsd_content = self.xsd_output.toPlainText()
