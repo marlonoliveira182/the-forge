@@ -10,15 +10,50 @@ try:
     from Levenshtein import ratio as levenshtein_ratio
 except ImportError:
     def levenshtein_ratio(a, b):
-        # Fallback simples: proporção de prefixo comum
-        min_len = min(len(a), len(b))
-        common = 0
+        # Fallback implementation using simple string similarity
+        if not a or not b:
+            return 0.0
+        
+        # Convert to lowercase for better matching
+        a_lower = a.lower()
+        b_lower = b.lower()
+        
+        # Exact match
+        if a_lower == b_lower:
+            return 1.0
+        
+        # Check for common prefixes
+        min_len = min(len(a_lower), len(b_lower))
+        common_prefix = 0
         for i in range(min_len):
-            if a[i] == b[i]:
-                common += 1
+            if a_lower[i] == b_lower[i]:
+                common_prefix += 1
             else:
                 break
-        return common / max(len(a), len(b)) if max(len(a), len(b)) > 0 else 0
+        
+        # Check for common suffixes
+        common_suffix = 0
+        for i in range(1, min_len + 1):
+            if a_lower[-i] == b_lower[-i]:
+                common_suffix += 1
+            else:
+                break
+        
+        # Calculate similarity based on common parts
+        total_common = common_prefix + common_suffix
+        max_len = max(len(a_lower), len(b_lower))
+        
+        if max_len == 0:
+            return 0.0
+        
+        # Weight the similarity (prefix is more important than suffix)
+        similarity = (common_prefix * 0.7 + common_suffix * 0.3) / max_len
+        
+        # Add bonus for length similarity
+        length_diff = abs(len(a_lower) - len(b_lower))
+        length_penalty = length_diff / max_len * 0.2
+        
+        return max(0.0, similarity - length_penalty)
 
 def normalize_levels(levels):
     # Lower-case, replace 'item' and '[]' with 'ARRAYITEM'
