@@ -11,6 +11,7 @@ from openpyxl.utils import get_column_letter
 
 # Import the microservices
 from services.xsd_parser_service import XSDParser
+from services.json_schema_parser_service import JSONSchemaParser
 from services.excel_export_service import ExcelExporter
 from services.wsdl_to_xsd_extractor import merge_xsd_from_wsdl
 from services.excel_mapping_service import ExcelMappingService
@@ -281,6 +282,7 @@ st.markdown("""
 def get_services():
     return {
         'xsd_parser': XSDParser(),
+        'json_schema_parser': JSONSchemaParser(),
         'excel_exporter': ExcelExporter(),
         'mapping_service': ExcelMappingService(),
         'json_to_excel': JSONToExcelService(),
@@ -491,7 +493,11 @@ def show_mapping_page(services):
                 try:
                     decoded_content = content.decode('utf-8')
                     preview = decoded_content[:1000] + "..." if len(decoded_content) > 1000 else decoded_content
-                    st.code(preview, language="xml")
+                    # Determine language based on file extension
+                    if source_file.name.lower().endswith('.json'):
+                        st.code(preview, language="json")
+                    else:
+                        st.code(preview, language="xml")
                 except UnicodeDecodeError:
                     st.code(content[:500], language="text")
     
@@ -513,7 +519,11 @@ def show_mapping_page(services):
                 try:
                     decoded_content = content.decode('utf-8')
                     preview = decoded_content[:1000] + "..." if len(decoded_content) > 1000 else decoded_content
-                    st.code(preview, language="xml")
+                    # Determine language based on file extension
+                    if target_file.name.lower().endswith('.json'):
+                        st.code(preview, language="json")
+                    else:
+                        st.code(preview, language="xml")
                 except UnicodeDecodeError:
                     st.code(content[:500], language="text")
     
@@ -630,7 +640,11 @@ def show_schema_to_excel_page(services):
             try:
                 decoded_content = content.decode('utf-8')
                 preview = decoded_content[:1000] + "..." if len(decoded_content) > 1000 else decoded_content
-                st.code(preview, language="xml")
+                # Determine language based on file extension
+                if schema_file.name.lower().endswith('.json'):
+                    st.code(preview, language="json")
+                else:
+                    st.code(preview, language="xml")
             except UnicodeDecodeError:
                 st.code(content[:500], language="text")
     
@@ -821,62 +835,28 @@ def process_mapping(source_file, target_file, services, source_case="Original", 
             target_temp.write(target_file.read())
             target_temp_path = target_temp.name
         
-        # --- v8 logic: parse source and target, multi-message, row matching, column structure ---
+        # --- Unified schema parsing logic for both XSD and JSON Schema ---
         
-        XSD_NS = '{http://www.w3.org/2001/XMLSchema}'
-        parser = services['xsd_parser']
+        # Parse source schema (XSD or JSON Schema)
+        src_rows = parse_schema_file(source_temp_path, services)
         
-        # Parse source XSD
-        tree = ET.parse(source_temp_path)
-        root = tree.getroot()
-        simple_types = {}
-        for simple_type in root.findall(f'.//{{http://www.w3.org/2001/XMLSchema}}simpleType'):
-            name = simple_type.get('name')
-            if not name:
-                continue
-            restriction = simple_type.find('{http://www.w3.org/2001/XMLSchema}restriction')
-            base = restriction.get('base') if restriction is not None else None
-            restrictions = {}
-            if restriction is not None:
-                for cons in restriction:
-                    cons_name = cons.tag.replace('{http://www.w3.org/2001/XMLSchema}', '')
-                    val = cons.get('value')
-                    if val:
-                        restrictions[cons_name] = val
-            simple_types[name] = {'base': base, 'restrictions': restrictions}
-        
-        complex_types = {ct.get('name'): ct for ct in root.findall(f'.//{{http://www.w3.org/2001/XMLSchema}}complexType') if ct.get('name')}
-        src_messages = {}
-        for elem in root.findall('{http://www.w3.org/2001/XMLSchema}element'):
-            name = elem.get('name')
-            if name:
-                rows = parser.parse_element(elem, complex_types, simple_types, 1, category='message')
-                src_messages[name] = rows
-        
-        # Parse target XSD (single sheet)
+        # Parse target schema (XSD or JSON Schema)
         tgt_rows = []
         if target_temp_path and os.path.exists(target_temp_path):
-            tgt_tree = ET.parse(target_temp_path)
-            tgt_root = tgt_tree.getroot()
-            tgt_simple_types = {}
-            for simple_type in tgt_root.findall(f'.//{{http://www.w3.org/2001/XMLSchema}}simpleType'):
-                name = simple_type.get('name')
-                if not name:
-                    continue
-                restriction = simple_type.find('{http://www.w3.org/2001/XMLSchema}restriction')
-                base = restriction.get('base') if restriction is not None else None
-                restrictions = {}
-                if restriction is not None:
-                    for cons in restriction:
-                        cons_name = cons.tag.replace('{http://www.w3.org/2001/XMLSchema}', '')
-                        val = cons.get('value')
-                        if val:
-                            restrictions[cons_name] = val
-                tgt_simple_types[name] = {'base': base, 'restrictions': restrictions}
-            tgt_complex_types = {ct.get('name'): ct for ct in tgt_root.findall(f'.//{{http://www.w3.org/2001/XMLSchema}}complexType') if ct.get('name')}
-            for elem in tgt_root.findall('{http://www.w3.org/2001/XMLSchema}element'):
-                rows = parser.parse_element(elem, tgt_complex_types, tgt_simple_types, 1, category='message')
-                tgt_rows.extend(rows)
+            tgt_rows = parse_schema_file(target_temp_path, services)
+        
+        # Group source rows by message/element name for multi-sheet structure
+        src_messages = {}
+        current_message = "schema"  # Default message name
+        
+        for row in src_rows:
+            # For JSON Schema, we don't have multiple messages like XSD, so group by first level
+            if len(row['levels']) > 0 and row['levels'][0]:
+                current_message = row['levels'][0]
+            
+            if current_message not in src_messages:
+                src_messages[current_message] = []
+            src_messages[current_message].append(row)
         
         # Build Excel file
         wb = openpyxl.Workbook()
@@ -1198,7 +1178,7 @@ def process_schema_to_excel(schema_file, services):
             temp_path = temp_file.name
         
         # Parse schema
-        schema_data = parse_schema_file(temp_path, services['xsd_parser'])
+        schema_data = parse_schema_file(temp_path, services)
         
         # Create Excel file
         output_buffer = BytesIO()
@@ -1247,14 +1227,23 @@ def process_schema_conversion(schema_file, services, source_format, target_forma
         st.error(f"Error in schema conversion: {str(e)}")
         return None
 
-def parse_schema_file(file_path, xsd_parser):
+def parse_schema_file(file_path, services):
+    """
+    Parse a schema file (XSD or JSON Schema) and return rows in the same format.
+    
+    Args:
+        file_path: Path to the schema file
+        services: Dictionary containing parser services
+        
+    Returns:
+        List of dictionaries with the same structure as XSD parser output
+    """
     if file_path.endswith('.json'):
         # Handle JSON Schema
-        with open(file_path, 'r') as f:
-            return json.load(f)
+        return services['json_schema_parser'].parse_json_schema_file(file_path)
     else:
         # Handle XSD
-        return xsd_parser.parse_xsd_file(file_path)
+        return services['xsd_parser'].parse_xsd_file(file_path)
 
 if __name__ == "__main__":
     main() 
