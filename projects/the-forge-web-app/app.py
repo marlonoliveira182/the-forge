@@ -8,11 +8,6 @@ import base64
 import openpyxl
 import difflib
 from openpyxl.utils import get_column_letter
-import logging
-
-# Configure basic logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
 
 # Import the microservices
 from services.xsd_parser_service import XSDParser
@@ -119,52 +114,165 @@ st.markdown("""
         border-radius: 8px;
         margin: 1rem 0;
     }
+    /* Professional Sidebar Styling */
     .sidebar .sidebar-content {
-        background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+        background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        border-right: 1px solid #e9ecef;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
     }
-    .sidebar .stButton > button {
+    
+    /* Sidebar Header */
+    .sidebar-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 12px 16px;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        margin: 4px 0;
-        width: 100%;
+        padding: 1.5rem 1rem;
+        margin: -1rem -1rem 1rem -1rem;
+        border-radius: 0 0 15px 0;
+        text-align: center;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     }
-    .sidebar .stButton > button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    
+    .sidebar-header h2 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
     }
-    .sidebar .stButton > button[data-baseweb="button"] {
-        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    
+    .sidebar-header p {
+        margin: 0.5rem 0 0 0;
+        font-size: 0.9rem;
+        opacity: 0.9;
     }
-    .sidebar .stButton > button[data-baseweb="button"]:hover {
-        background: linear-gradient(135deg, #20c997 0%, #28a745 100%);
+    
+    /* Navigation Sections */
+    .nav-section {
+        margin: 1.5rem 0;
     }
-    .sidebar h3 {
+    
+    .nav-section-title {
         color: #495057;
-        font-weight: 600;
-        margin: 16px 0 8px 0;
-        padding-bottom: 4px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin: 0 0 0.75rem 0;
+        padding: 0.5rem 0;
         border-bottom: 2px solid #e9ecef;
+        position: relative;
     }
-    .sidebar hr {
-        border: none;
+    
+    .nav-section-title::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        width: 30px;
+        height: 2px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        border-radius: 1px;
+    }
+    
+    /* Navigation Buttons */
+    .sidebar .stButton > button {
+        background: #ffffff;
+        color: #495057;
+        border: 1px solid #e9ecef;
+        border-radius: 10px;
+        padding: 12px 16px;
+        font-weight: 500;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        margin: 0.25rem 0;
+        width: 100%;
+        text-align: left;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .sidebar .stButton > button::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s;
+    }
+    
+    .sidebar .stButton > button:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-color: #667eea;
+    }
+    
+    .sidebar .stButton > button:hover::before {
+        left: 100%;
+    }
+    
+    /* Active/Current Page Button */
+    .sidebar .stButton > button[data-active="true"] {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        border-color: #28a745;
+        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        font-weight: 600;
+    }
+    
+    /* Home Button Special Styling */
+    .sidebar .stButton > button[data-type="home"] {
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        color: white;
+        border-color: #6c757d;
+        font-weight: 600;
+    }
+    
+    .sidebar .stButton > button[data-type="home"]:hover {
+        background: linear-gradient(135deg, #495057 0%, #343a40 100%);
+        border-color: #495057;
+    }
+    
+    /* Divider Lines */
+    .sidebar-divider {
         height: 1px;
-        background: linear-gradient(90deg, transparent, #667eea, transparent);
-        margin: 16px 0;
+        background: linear-gradient(90deg, transparent, #e9ecef, transparent);
+        margin: 1.5rem 0;
+        border: none;
     }
+    
+    /* Current Page Indicator */
     .current-page-indicator {
         background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
         color: white;
-        padding: 8px 12px;
-        border-radius: 6px;
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
         font-weight: 600;
         text-align: center;
-        margin: 8px 0;
+        margin: 1rem 0;
+        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.2);
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Footer Section */
+    .sidebar-footer {
+        margin-top: auto;
+        padding: 1rem 0;
+        text-align: center;
+        color: #6c757d;
+        font-size: 0.8rem;
+    }
+    
+    .sidebar-footer .version {
+        background: #f8f9fa;
+        padding: 0.5rem;
+        border-radius: 6px;
+        margin-top: 0.5rem;
+        font-family: 'Courier New', monospace;
+        font-size: 0.75rem;
     }
     /* Improve text readability */
     .main .block-container {
@@ -209,37 +317,66 @@ def main():
     # Get services
     services = get_services()
     
-    # Sidebar navigation
-    st.sidebar.markdown("## 🧭 Navigation")
-    
-    # Navigation buttons
-    if st.sidebar.button("🏠 Home", use_container_width=True, type="secondary"):
-        st.session_state.current_page = "🏠 Home"
-    
-    st.sidebar.markdown("### 🔧 Tools")
-    
-    if st.sidebar.button("📊 Schema Mapping", use_container_width=True):
-        st.session_state.current_page = "📊 Schema Mapping"
-    
-    if st.sidebar.button("🔧 WSDL to XSD", use_container_width=True):
-        st.session_state.current_page = "🔧 WSDL to XSD"
-    
-    if st.sidebar.button("📋 Schema to Excel", use_container_width=True):
-        st.session_state.current_page = "📋 Schema to Excel"
-    
-    st.sidebar.markdown("### ℹ️ Info")
-    
-    if st.sidebar.button("ℹ️ About", use_container_width=True):
-        st.session_state.current_page = "ℹ️ About"
+    # Professional Sidebar Navigation
+    st.sidebar.markdown("""
+        <div class="sidebar-header">
+            <h2>🔧 The Forge</h2>
+            <p>Schema Transformation Tool</p>
+        </div>
+    """, unsafe_allow_html=True)
     
     # Initialize session state if not exists
     if 'current_page' not in st.session_state:
         st.session_state.current_page = "🏠 Home"
     
-    # Show current page indicator
-    st.sidebar.markdown("---")
+    # Navigation Sections
+    st.sidebar.markdown('<div class="nav-section-title">🏠 Navigation</div>', unsafe_allow_html=True)
+    
+    # Home Button
+    home_active = st.session_state.current_page == "🏠 Home"
+    if st.sidebar.button("🏠 Home", use_container_width=True, key="nav_home"):
+        st.session_state.current_page = "🏠 Home"
+    
+    st.sidebar.markdown('<hr class="sidebar-divider">', unsafe_allow_html=True)
+    
+    # Tools Section
+    st.sidebar.markdown('<div class="nav-section-title">🔧 Tools</div>', unsafe_allow_html=True)
+    
+    # Schema Mapping
+    mapping_active = st.session_state.current_page == "📊 Schema Mapping"
+    if st.sidebar.button("📊 Schema Mapping", use_container_width=True, key="nav_mapping"):
+        st.session_state.current_page = "📊 Schema Mapping"
+    
+    # WSDL to XSD
+    wsdl_active = st.session_state.current_page == "🔧 WSDL to XSD"
+    if st.sidebar.button("🔧 WSDL to XSD", use_container_width=True, key="nav_wsdl"):
+        st.session_state.current_page = "🔧 WSDL to XSD"
+    
+    # Schema to Excel
+    excel_active = st.session_state.current_page == "📋 Schema to Excel"
+    if st.sidebar.button("📋 Schema to Excel", use_container_width=True, key="nav_excel"):
+        st.session_state.current_page = "📋 Schema to Excel"
+    
+    st.sidebar.markdown('<hr class="sidebar-divider">', unsafe_allow_html=True)
+    
+    # Info Section
+    st.sidebar.markdown('<div class="nav-section-title">ℹ️ Information</div>', unsafe_allow_html=True)
+    
+    # About
+    about_active = st.session_state.current_page == "ℹ️ About"
+    if st.sidebar.button("ℹ️ About", use_container_width=True, key="nav_about"):
+        st.session_state.current_page = "ℹ️ About"
+    
+    # Current Page Indicator
     st.sidebar.markdown(f'<div class="current-page-indicator">📍 {st.session_state.current_page}</div>', unsafe_allow_html=True)
-    st.sidebar.markdown("---")
+    
+    # Footer
+    st.sidebar.markdown("""
+        <div class="sidebar-footer">
+            <div>Built with Streamlit</div>
+            <div class="version">v1.0.0</div>
+        </div>
+    """, unsafe_allow_html=True)
     
     # Display current page
     if st.session_state.current_page == "🏠 Home":
@@ -573,19 +710,15 @@ def show_about_page():
 
 def process_mapping(source_file, target_file, services, threshold, source_case="Original", target_case="Original", reorder_attributes=False):
     """Process schema mapping using exact v8 logic"""
-    logger.info(f"Starting process_mapping with source_case={source_case}, target_case={target_case}, reorder_attributes={reorder_attributes}")
     try:
         # Create temporary files
-        logger.info("Creating temporary files...")
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{source_file.name.split('.')[-1]}") as source_temp:
             source_temp.write(source_file.read())
             source_temp_path = source_temp.name
-            logger.info(f"Created source temp file: {source_temp_path}")
         
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{target_file.name.split('.')[-1]}") as target_temp:
             target_temp.write(target_file.read())
             target_temp_path = target_temp.name
-            logger.info(f"Created target temp file: {target_temp_path}")
         
         # --- v8 logic: parse source and target, multi-message, row matching, column structure ---
         
@@ -838,38 +971,27 @@ def process_mapping(source_file, target_file, services, threshold, source_case="
         
         # --- Attribute reordering if flag is set ---
         if reorder_attributes:
-            logger.info("Starting attribute reordering process...")
             try:
                 from services.reorder_excel_attributes import reorder_attributes_in_excel
-                logger.info("Successfully imported reorder_attributes_in_excel")
                 
                 # Save to temporary file for reordering
-                logger.info("Creating temporary Excel file for reordering...")
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_excel:
                     output_buffer.seek(0)
                     temp_excel.write(output_buffer.getvalue())
                     temp_excel_path = temp_excel.name
-                    logger.info(f"Created temp Excel file for reordering: {temp_excel_path}")
                 
-                logger.info("Calling reorder_attributes_in_excel...")
                 reorder_attributes_in_excel(temp_excel_path)
-                logger.info("reorder_attributes_in_excel completed successfully")
                 
                 # Read back the reordered file
-                logger.info("Reading back the reordered file...")
                 with open(temp_excel_path, 'rb') as f:
                     output_buffer.seek(0)
                     output_buffer.write(f.read())
                     output_buffer.truncate()
                 
                 # Clean up temp reordering file
-                logger.info("Cleaning up temp reordering file...")
                 os.unlink(temp_excel_path)
-                logger.info("Attribute reordering completed successfully")
-                st.info("[INFO] Reordered attributes to appear first in each parent structure.")
             except Exception as e:
-                logger.error(f"Exception during attribute reordering: {e}", exc_info=True)
-                st.error(f"[ERROR] Failed to reorder attributes: {str(e)}")
+                st.error(f"Failed to reorder attributes: {str(e)}")
                 # Continue without reordering rather than failing the entire process
         
         # Clean up temp files
@@ -880,7 +1002,6 @@ def process_mapping(source_file, target_file, services, threshold, source_case="
         return output_buffer.getvalue()
         
     except Exception as e:
-        logger.error(f"Exception in process_mapping: {e}", exc_info=True)
         st.error(f"Error in mapping: {str(e)}")
         return None
 
