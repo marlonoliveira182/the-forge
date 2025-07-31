@@ -771,7 +771,8 @@ def process_mapping(source_file, target_file, services, threshold, keep_case, re
                 os.unlink(temp_excel_path)
                 st.info("[INFO] Reordered attributes to appear first in each parent structure.")
             except Exception as e:
-                st.error(f"[ERROR] Failed to reorder attributes: {e}")
+                st.error(f"[ERROR] Failed to reorder attributes: {str(e)}")
+                # Continue without reordering rather than failing the entire process
         
         # Clean up temp files
         os.unlink(source_temp_path)

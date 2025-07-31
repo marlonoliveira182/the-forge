@@ -82,7 +82,12 @@ def merge_xsd_from_wsdl(wsdl_content: str) -> str:
             merged_schema.remove(imp)
         
         # Convert to string
-        ET.indent(merged_schema, space="  ")
+        # ET.indent() is only available in Python 3.9+
+        try:
+            ET.indent(merged_schema, space="  ")
+        except AttributeError:
+            # Fallback for older Python versions
+            pass
         return ET.tostring(merged_schema, encoding='unicode')
         
     except Exception as e:

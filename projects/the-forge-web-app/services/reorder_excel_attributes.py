@@ -3,11 +3,16 @@ from collections import defaultdict
 
 
 def reorder_attributes_in_excel(excel_path):
-    wb = openpyxl.load_workbook(excel_path)
     try:
+        wb = openpyxl.load_workbook(excel_path)
+        if not wb.worksheets:
+            raise Exception("No worksheets found in Excel file")
+        
         for ws in wb.worksheets:
             header_row_1 = [cell.value for cell in ws[1]]
             header_row_2 = [cell.value for cell in ws[2]]
+            
+            # Validate that this is a mapping sheet
             try:
                 level_start = header_row_1.index('Level1_src')
             except ValueError:
@@ -18,14 +23,16 @@ def reorder_attributes_in_excel(excel_path):
                     category_col = header_row_1.index(cat_col)
                     break
             if category_col is None:
-                continue
+                continue  # No category column found
             data_rows = list(ws.iter_rows(min_row=3, values_only=True))
             if not data_rows:
-                continue
+                continue  # No data rows found
             # Build a tree: key = tuple(levels), value = (row, children)
             node_map = {}
             root_nodes = []
             for idx, row in enumerate(data_rows):
+                if len(row) <= level_start:
+                    continue  # Skip rows that don't have enough columns
                 levels = row[level_start:level_start+8]
                 nonempty_levels = [lvl for lvl in levels if lvl and str(lvl).strip()]
                 key = tuple(nonempty_levels)
@@ -48,7 +55,11 @@ def reorder_attributes_in_excel(excel_path):
                 attr_keys = []
                 elem_keys = []
                 for child_key in node['children']:
-                    cat_val = str(node_map[child_key]['row'][category_col]).strip().lower() if node_map[child_key]['row'][category_col] else ''
+                    child_row = node_map[child_key]['row']
+                    if len(child_row) <= category_col:
+                        elem_keys.append(child_key)  # Default to element if category column doesn't exist
+                        continue
+                    cat_val = str(child_row[category_col]).strip().lower() if child_row[category_col] else ''
                     if cat_val == 'attribute':
                         attr_keys.append(child_key)
                     else:
@@ -64,15 +75,16 @@ def reorder_attributes_in_excel(excel_path):
                 top_level_keys = root_nodes
             # Flatten the tree
             new_data = []
-            for key in sorted(top_level_keys, key=lambda k: data_rows.index(node_map[k]['row'])):
+            for key in sorted(top_level_keys, key=lambda k: data_rows.index(node_map[k]['row']) if node_map[k]['row'] in data_rows else 0):
                 new_data.extend(flatten_tree(key))
             # Clear old data rows
             ws.delete_rows(3, ws.max_row-2)
             for row in new_data:
                 ws.append(row)
         wb.save(excel_path)
-    finally:
         wb.close()
+    except Exception as e:
+        raise Exception(f"Failed to reorder attributes in Excel: {str(e)}")
 
 if __name__ == "__main__":
     import sys
