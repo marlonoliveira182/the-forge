@@ -1,236 +1,231 @@
 # The Forge API
 
-A web API version of The Forge v8 application for schema transformation and mapping operations. This API provides the same functionality as the desktop application but accessible via HTTP endpoints.
+A FastAPI-based REST API for schema transformation and mapping operations, adapted from The Forge v8 desktop application.
 
 ## Features
 
-- **Schema Mapping**: Create field mappings between different schema formats (JSON Schema, XSD)
-- **Schema to Excel**: Convert schemas to Excel format for analysis
-- **XSD to JSON Schema**: Convert XSD schemas to JSON Schema format
-- **JSON Schema to XSD**: Convert JSON Schema to XSD format
-- **WSDL to XSD**: Extract XSD schemas from WSDL files
+- **XSD Schema Parsing**: Parse XML Schema Definition files and extract structured data
+- **JSON Schema Parsing**: Parse JSON Schema files and convert to flat structure
+- **WSDL to XSD Extraction**: Extract XSD schemas from WSDL files
+- **Excel Generation**: Create Excel files with schema structure and mapping data
+- **Field Mapping**: Create mappings between source and target schemas with similarity scoring
+- **Schema Conversion**: Convert between XSD and JSON Schema formats
 
 ## API Endpoints
 
-### Base URL
-```
-https://your-render-app.onrender.com
-```
+### Health Check
+- `GET /api/health` - Check API health and service status
 
-### Endpoints
+### Schema Operations
+- `POST /api/schema-to-excel` - Convert schema files to Excel format
+- `POST /api/xsd-to-jsonschema` - Convert XSD to JSON Schema
+- `POST /api/jsonschema-to-xsd` - Convert JSON Schema to XSD
+- `POST /api/wsdl-to-xsd` - Extract XSD from WSDL files
 
-#### 1. Health Check
-- **GET** `/api/health`
-- Returns API status and version
+### Mapping Operations
+- `POST /api/mapping` - Create field mapping between source and target schemas
 
-#### 2. Schema Mapping
-- **POST** `/api/mapping`
-- **Parameters:**
-  - `source_file`: Source schema file (JSON, XSD, XML)
-  - `target_file`: Target schema file (JSON, XSD, XML)
-  - `threshold`: Similarity threshold (default: 0.7)
-  - `keep_case`: Keep original case (default: false)
-- **Returns:** Excel file with field mapping
-
-#### 3. Schema to Excel
-- **POST** `/api/schema-to-excel`
-- **Parameters:**
-  - `schema_file`: Schema file (JSON, XSD, XML)
-  - `keep_case`: Keep original case (default: false)
-- **Returns:** Excel file with schema structure
-
-#### 4. XSD to JSON Schema
-- **POST** `/api/xsd-to-jsonschema`
-- **Parameters:**
-  - `xsd_file`: XSD file
-  - `keep_case`: Keep original case (default: false)
-- **Returns:** JSON Schema file
-
-#### 5. JSON Schema to XSD
-- **POST** `/api/jsonschema-to-xsd`
-- **Parameters:**
-  - `json_schema_file`: JSON Schema file
-- **Returns:** XSD file
-
-#### 6. WSDL to XSD
-- **POST** `/api/wsdl-to-xsd`
-- **Parameters:**
-  - `wsdl_file`: WSDL file
-- **Returns:** XSD file
-
-## Usage Examples
-
-### Using curl
-
-#### Schema Mapping
-```bash
-curl -X POST "https://your-render-app.onrender.com/api/mapping" \
-  -F "source_file=@source.json" \
-  -F "target_file=@target.xsd" \
-  -F "threshold=0.8" \
-  -F "keep_case=false" \
-  --output mapping.xlsx
-```
-
-#### Schema to Excel
-```bash
-curl -X POST "https://your-render-app.onrender.com/api/schema-to-excel" \
-  -F "schema_file=@schema.json" \
-  --output schema.xlsx
-```
-
-#### XSD to JSON Schema
-```bash
-curl -X POST "https://your-render-app.onrender.com/api/xsd-to-jsonschema" \
-  -F "xsd_file=@schema.xsd" \
-  --output schema.json
-```
-
-#### WSDL to XSD
-```bash
-curl -X POST "https://your-render-app.onrender.com/api/wsdl-to-xsd" \
-  -F "wsdl_file=@service.wsdl" \
-  --output schema.xsd
-```
-
-### Using JavaScript/Fetch
-
-```javascript
-// Schema Mapping
-const formData = new FormData();
-formData.append('source_file', sourceFile);
-formData.append('target_file', targetFile);
-formData.append('threshold', '0.8');
-
-const response = await fetch('https://your-render-app.onrender.com/api/mapping', {
-  method: 'POST',
-  body: formData
-});
-
-const blob = await response.blob();
-// Handle the Excel file download
-```
-
-### Using Python requests
-
-```python
-import requests
-
-# Schema to Excel
-files = {'schema_file': open('schema.json', 'rb')}
-response = requests.post('https://your-render-app.onrender.com/api/schema-to-excel', files=files)
-
-with open('output.xlsx', 'wb') as f:
-    f.write(response.content)
-```
-
-## Deployment
-
-### Render Deployment
-
-1. **Connect your repository to Render:**
-   - Go to [Render Dashboard](https://dashboard.render.com)
-   - Click "New +" and select "Web Service"
-   - Connect your GitHub repository
-
-2. **Configure the service:**
-   - **Name:** `the-forge-api`
-   - **Environment:** `Python`
-   - **Build Command:** `pip install -r requirements.txt`
-   - **Start Command:** `uvicorn main:app --host 0.0.0.0 --port $PORT`
-   - **Python Version:** 3.11.18 (specified in render.yaml)
-
-3. **Deploy:**
-   - Click "Create Web Service"
-   - Render will automatically deploy your application
-
-### Docker Deployment
-
-1. **Build the image:**
-```bash
-docker build -t the-forge-api .
-```
-
-2. **Run the container:**
-```bash
-docker run -p 8000:8000 the-forge-api
-```
-
-3. **Access the API:**
-```
-http://localhost:8000
-```
+## Installation & Deployment
 
 ### Local Development
 
-1. **Install dependencies:**
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd the-forge-api
+   ```
+
+2. **Create virtual environment**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Run the application**
+   ```bash
+   python main.py
+   ```
+
+5. **Test the API**
+   ```bash
+   python test_api.py
+   ```
+
+### Render Deployment
+
+The API is configured for deployment on Render with the following specifications:
+
+- **Python Version**: 3.11.18 (specified in `runtime.txt` and `render.yaml`)
+- **Build Command**: `pip install -r requirements.txt`
+- **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+
+#### Deployment Files:
+- `render.yaml` - Render service configuration
+- `runtime.txt` - Python version specification
+- `Dockerfile` - Alternative container deployment
+- `requirements.txt` - Python dependencies
+
+#### Environment Variables:
+- `PYTHON_VERSION`: 3.11.18
+- `PYTHONPATH`: /opt/render/project/src
+
+## Usage Examples
+
+### Convert XSD to Excel
+
 ```bash
-pip install -r requirements.txt
+curl -X POST "http://localhost:8000/api/schema-to-excel" \
+  -H "accept: application/json" \
+  -H "Content-Type: multipart/form-data" \
+  -F "schema_file=@your_schema.xsd" \
+  -F "keep_case=false"
 ```
 
-2. **Run the application:**
+### Extract XSD from WSDL
+
 ```bash
-uvicorn main:app --reload
+curl -X POST "http://localhost:8000/api/wsdl-to-xsd" \
+  -H "accept: application/json" \
+  -H "Content-Type: multipart/form-data" \
+  -F "wsdl_file=@your_service.wsdl"
 ```
 
-3. **Access the API:**
+### Create Field Mapping
+
+```bash
+curl -X POST "http://localhost:8000/api/mapping" \
+  -H "accept: application/json" \
+  -H "Content-Type: multipart/form-data" \
+  -F "source_file=@source_schema.xsd" \
+  -F "target_file=@target_schema.json" \
+  -F "threshold=0.7" \
+  -F "keep_case=false"
 ```
-http://localhost:8000
-```
-
-## API Documentation
-
-Once deployed, you can access the interactive API documentation at:
-- **Swagger UI:** `https://your-render-app.onrender.com/docs`
-- **ReDoc:** `https://your-render-app.onrender.com/redoc`
-
-## File Format Support
-
-### Input Formats
-- **JSON Schema:** `.json` files following JSON Schema specification
-- **XSD:** `.xsd` and `.xml` files following XML Schema Definition
-- **WSDL:** `.wsdl` files containing web service definitions
-
-### Output Formats
-- **Excel:** `.xlsx` files with formatted schema information
-- **JSON Schema:** `.json` files with proper JSON Schema structure
-- **XSD:** `.xsd` files with XML Schema Definition
-
-## Error Handling
-
-The API returns appropriate HTTP status codes:
-- **200:** Success
-- **400:** Bad Request (invalid file format, missing parameters)
-- **500:** Internal Server Error (processing errors)
-
-## Rate Limiting
-
-The free tier on Render may have rate limits. For production use, consider upgrading to a paid plan.
-
-## Security
-
-- CORS is enabled for all origins (configure as needed for production)
-- File uploads are validated for supported formats
-- Temporary files are cleaned up after processing
 
 ## Architecture
 
 The API is built with a modular service architecture:
 
-- **XSDParser**: Handles XSD schema parsing and field extraction
-- **JSONSchemaParser**: Handles JSON Schema parsing and field extraction
-- **ExcelGenerator**: Creates Excel files with schema information
+### Core Services
+
+- **XSDParser**: Parses XSD files and extracts structured data
+- **JSONSchemaParser**: Parses JSON Schema files using flattening approach
+- **ExcelGenerator**: Creates Excel files with schema structure
 - **WSDLExtractor**: Extracts XSD schemas from WSDL files
-- **MappingService**: Handles field mapping and similarity calculations
+- **MappingService**: Creates field mappings with similarity scoring
+
+### Data Flow
+
+1. **File Upload**: Clients upload schema files via multipart form data
+2. **Parsing**: Services parse the uploaded files into structured data
+3. **Processing**: Business logic processes the data according to endpoint requirements
+4. **Output Generation**: Results are generated as Excel files or JSON responses
+5. **File Download**: Processed files are returned to the client
+
+## Testing
+
+### Run Tests Locally
+
+```bash
+# Test all endpoints
+python test_api.py
+
+# Test deployment compatibility
+python test_deployment.py
+```
+
+### Test Files
+
+- `test_api.py` - Comprehensive API endpoint testing
+- `test_deployment.py` - Deployment compatibility verification
+
+## Troubleshooting
+
+### Common Deployment Issues
+
+#### 1. Python Version Compatibility
+**Issue**: Python 3.13 compatibility problems with older packages
+**Solution**: Using Python 3.11.18 as specified in `runtime.txt` and `render.yaml`
+
+#### 2. Package Dependencies
+**Issue**: pandas compilation failures on Python 3.13
+**Solution**: Removed pandas dependency (not needed for core functionality)
+
+#### 3. Build Timeouts
+**Issue**: Large packages taking too long to build
+**Solution**: Using pre-compiled packages and minimal dependencies
+
+### Local Development Issues
+
+#### Import Errors
+```bash
+# Verify all imports work
+python test_deployment.py
+```
+
+#### Port Conflicts
+```bash
+# Use different port
+uvicorn main:app --host 0.0.0.0 --port 8001
+```
+
+## File Structure
+
+```
+the-forge-api/
+├── main.py                 # FastAPI application
+├── requirements.txt        # Python dependencies
+├── render.yaml            # Render deployment config
+├── runtime.txt            # Python version specification
+├── Dockerfile             # Container configuration
+├── test_api.py            # API testing script
+├── test_deployment.py     # Deployment testing
+├── README.md              # Documentation
+├── .gitignore             # Git ignore rules
+└── services/              # Core service modules
+    ├── __init__.py
+    ├── xsd_parser.py      # XSD parsing service
+    ├── json_schema_parser.py  # JSON Schema parsing
+    ├── excel_generator.py     # Excel file generation
+    ├── wsdl_extractor.py      # WSDL to XSD extraction
+    └── mapping_service.py     # Field mapping service
+```
+
+## Dependencies
+
+### Core Dependencies
+- `fastapi==0.104.1` - Web framework
+- `uvicorn==0.24.0` - ASGI server
+- `openpyxl==3.1.2` - Excel file handling
+- `jsonschema==4.17.3` - JSON Schema validation
+- `python-multipart==0.0.6` - File upload handling
+- `pydantic==2.5.0` - Data validation
+- `lxml==4.9.3` - XML processing
+
+### System Dependencies
+- Python 3.11.18
+- GCC compiler (for lxml compilation)
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test thoroughly
+4. Add tests for new functionality
 5. Submit a pull request
 
 ## License
 
-This project maintains the same license as the original Forge application. 
+This project is part of The Forge ecosystem and follows the same licensing terms.
+
+## Support
+
+For deployment issues or API questions, please check:
+1. The troubleshooting section above
+2. Render deployment logs
+3. Local testing with `test_deployment.py` 

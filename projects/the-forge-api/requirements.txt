@@ -4,5 +4,4 @@ openpyxl==3.1.2
 jsonschema==4.17.3
 python-multipart==0.0.6
 pydantic==2.5.0
-lxml==4.9.3
-pandas==2.1.4 
+lxml==4.9.3 
