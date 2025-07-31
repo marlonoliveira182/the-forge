@@ -66,11 +66,63 @@ class ExcelMappingService:
             source_schema = source_schema.get(source_struct, source_schema)
         if target_struct:
             target_schema = target_schema.get(target_struct, target_schema)
+        
         source_paths = self.flatten_schema(source_schema)
         target_paths = self.flatten_schema(target_schema)
-        # For demo: map source to target by index (1:1), fill rest with blanks
+        
+        # Create a more intelligent mapping based on field name similarity
         mapping_rows = []
-        for i, src in enumerate(source_paths):
-            tgt = target_paths[i] if i < len(target_paths) else ''
-            mapping_rows.append({'Source Path': src, 'Target Path': tgt})
+        used_target_paths = set()
+        
+        for src_path in source_paths:
+            # Try to find the best matching target path
+            best_match = None
+            best_score = 0
+            
+            for tgt_path in target_paths:
+                if tgt_path in used_target_paths:
+                    continue  # Skip already used target paths
+                
+                # Calculate similarity score based on field names
+                src_field = src_path.split('.')[-1] if '.' in src_path else src_path
+                tgt_field = tgt_path.split('.')[-1] if '.' in tgt_path else tgt_path
+                
+                # Simple similarity based on field name
+                if src_field.lower() == tgt_field.lower():
+                    score = 1.0
+                elif src_field.lower() in tgt_field.lower() or tgt_field.lower() in src_field.lower():
+                    score = 0.8
+                else:
+                    # Use difflib for fuzzy matching
+                    import difflib
+                    score = difflib.SequenceMatcher(None, src_field.lower(), tgt_field.lower()).ratio()
+                
+                if score > best_score and score > 0.3:  # Minimum threshold
+                    best_score = score
+                    best_match = tgt_path
+            
+            if best_match:
+                used_target_paths.add(best_match)
+                mapping_rows.append({
+                    'Source Path': src_path, 
+                    'Target Path': best_match,
+                    'Match Score': f"{best_score:.2f}"
+                })
+            else:
+                # No match found
+                mapping_rows.append({
+                    'Source Path': src_path, 
+                    'Target Path': '',
+                    'Match Score': '0.00'
+                })
+        
+        # Add any remaining target paths as unmapped
+        for tgt_path in target_paths:
+            if tgt_path not in used_target_paths:
+                mapping_rows.append({
+                    'Source Path': '', 
+                    'Target Path': tgt_path,
+                    'Match Score': '0.00'
+                })
+        
         return mapping_rows 

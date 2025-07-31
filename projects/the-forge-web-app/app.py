@@ -793,6 +793,10 @@ def process_mapping(source_file, target_file, services, threshold, source_case="
             tgt_path_dict = {row_path(row): row for row in tgt_rows}
             tgt_paths = list(tgt_path_dict.keys())
             
+            # Create a mapping of source paths to target paths based on similarity
+            # This will help avoid duplicating target fields across multiple source rows
+            source_to_target_mapping = {}
+            
             for src_row in src_full_rows:
                 # Apply case conversion to source levels if needed
                 converted_levels = src_row['levels'].copy()
@@ -815,13 +819,26 @@ def process_mapping(source_file, target_file, services, threshold, source_case="
                 ]
                 
                 src_path_str = row_path(src_row)
-                tgt_row = tgt_path_dict.get(src_path_str)
-                best_match = ''
-                if not tgt_row and tgt_paths:
-                    matches = difflib.get_close_matches(src_path_str, tgt_paths, n=1, cutoff=0.0)
-                    if matches:
-                        best_match = matches[0]
-                        tgt_row = tgt_path_dict[best_match]
+                
+                # Check if we already have a mapping for this source path
+                if src_path_str in source_to_target_mapping:
+                    tgt_row = source_to_target_mapping[src_path_str]
+                else:
+                    # Try to find a match
+                    tgt_row = tgt_path_dict.get(src_path_str)
+                    best_match = ''
+                    
+                    if not tgt_row and tgt_paths:
+                        # Use fuzzy matching with a higher threshold for better accuracy
+                        matches = difflib.get_close_matches(src_path_str, tgt_paths, n=1, cutoff=0.6)
+                        if matches:
+                            best_match = matches[0]
+                            tgt_row = tgt_path_dict[best_match]
+                    
+                    # Store the mapping to avoid re-computation
+                    source_to_target_mapping[src_path_str] = tgt_row
+                
+                dest_field = ''  # Initialize destination field as empty
                 
                 # Apply case conversion to target levels if needed
                 converted_tgt_levels = []
@@ -831,9 +848,13 @@ def process_mapping(source_file, target_file, services, threshold, source_case="
                         converted_tgt_levels = [camel_to_pascal(level) for level in converted_tgt_levels]
                     elif target_case == "camelCase":
                         converted_tgt_levels = [pascal_to_camel(level) for level in converted_tgt_levels]
+                    # Set destination field to the matched target path
+                    dest_field = '.'.join([lvl for lvl in converted_tgt_levels if lvl])
                     tgt_levels = converted_tgt_levels + [''] * (max_tgt_level - len(converted_tgt_levels))
                 else:
                     tgt_levels = ['']*max_tgt_level
+                    # Keep dest_field as empty string for unmatched source fields
+                
                 tgt_vals = tgt_levels + [
                     tgt_row.get('Request Parameter','') if tgt_row else '',
                     tgt_row.get('GDPR','') if tgt_row else '',
@@ -846,8 +867,17 @@ def process_mapping(source_file, target_file, services, threshold, source_case="
                     tgt_row.get('Example','') if tgt_row else ''
                 ]
                 
-                dest_field = '.'.join([lvl for lvl in converted_tgt_levels if lvl])
                 ws.append(src_vals + [dest_field] + tgt_vals)
+            
+            # Add summary statistics
+            total_source_fields = len(src_full_rows)
+            matched_fields = sum(1 for src_row in src_full_rows 
+                              if source_to_target_mapping.get(row_path(src_row)) is not None)
+            unmatched_fields = total_source_fields - matched_fields
+            
+            # Add summary row at the end
+            summary_row = [''] * len(src_vals) + [f'SUMMARY: {matched_fields}/{total_source_fields} fields matched'] + [''] * len(tgt_vals)
+            ws.append(summary_row)
             
             # Prune unused source level columns
             def last_nonempty_level_col(start_col, num_levels):
