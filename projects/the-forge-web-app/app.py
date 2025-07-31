@@ -1,14 +1,12 @@
 import streamlit as st
 import os
 import tempfile
-import pandas as pd
-from pathlib import Path
 import json
 import xml.etree.ElementTree as ET
 from io import BytesIO
 import base64
 
-# Import the microservices from v8
+# Import the microservices
 from services.xsd_parser_service import XSDParser
 from services.excel_export_service import ExcelExporter
 from services.wsdl_to_xsd_extractor import merge_xsd_from_wsdl
@@ -23,73 +21,85 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for styling
+# Custom CSS for modern UI
 st.markdown("""
 <style>
     .main-header {
-        background: linear-gradient(90deg, #212E3E 0%, #2A3647 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        margin-bottom: 2rem;
-    }
-    .main-header h1 {
-        color: #28FF52;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
         text-align: center;
-        margin: 0;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
-    .upload-section {
-        background: #f8f9fa;
+    .section-header {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 10px;
+        margin: 1.5rem 0 1rem 0;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .feature-card {
+        background: white;
         padding: 1.5rem;
         border-radius: 10px;
-        border: 2px dashed #263CC8;
-        margin: 1rem 0;
-    }
-    .success-box {
-        background: #d4edda;
-        border: 1px solid #c3e6cb;
-        border-radius: 5px;
-        padding: 1rem;
-        margin: 1rem 0;
-    }
-    .error-box {
-        background: #f8d7da;
-        border: 1px solid #f5c6cb;
-        border-radius: 5px;
-        padding: 1rem;
-        margin: 1rem 0;
-    }
-    .info-box {
-        background: #d1ecf1;
-        border: 1px solid #bee5eb;
-        border-radius: 5px;
-        padding: 1rem;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         margin: 1rem 0;
     }
     .stButton > button {
-        background: #263CC8;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        border-radius: 5px;
         border: none;
-        padding: 0.5rem 1rem;
-        font-weight: bold;
+        border-radius: 8px;
+        padding: 12px 24px;
+        font-weight: 600;
+        transition: all 0.3s ease;
     }
     .stButton > button:hover {
-        background: #4A90E2;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     }
-    .primary-button {
-        background: #28FF52 !important;
-        color: #212E3E !important;
+    .upload-area {
+        border: 2px dashed #667eea;
+        border-radius: 10px;
+        padding: 2rem;
+        text-align: center;
+        background: #f8f9fa;
+        margin: 1rem 0;
     }
-    .primary-button:hover {
-        background: #1ED760 !important;
+    .success-message {
+        background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        color: white;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
+    .error-message {
+        background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+        color: white;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
+    .warning-message {
+        background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+        color: white;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
+    .sidebar .sidebar-content {
+        background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Initialize services
+# Initialize services with caching
 @st.cache_resource
 def get_services():
-    """Initialize and cache the microservices"""
     return {
         'xsd_parser': XSDParser(),
         'excel_exporter': ExcelExporter(),
@@ -99,275 +109,331 @@ def get_services():
 
 def main():
     # Header
-    st.markdown("""
-    <div class="main-header">
-        <h1>🔧 The Forge - Schema Transformation Tool</h1>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Sidebar navigation
-    st.sidebar.title("Navigation")
-    page = st.sidebar.selectbox(
-        "Choose a tool:",
-        ["Mapping", "WSDL to XSD", "Schema to Excel", "About"]
-    )
+    st.markdown('''
+        <div class="main-header">
+            <h1>🔧 The Forge - Schema Transformation Tool</h1>
+            <p style="font-size: 1.2rem; margin-top: 0.5rem;">Powerful schema transformation and mapping tool</p>
+        </div>
+    ''', unsafe_allow_html=True)
     
     # Get services
     services = get_services()
     
-    if page == "Mapping":
+    # Sidebar navigation
+    st.sidebar.markdown("## 🧭 Navigation")
+    page = st.sidebar.selectbox(
+        "Choose a tool:",
+        ["🏠 Home", "📊 Schema Mapping", "🔧 WSDL to XSD", "📋 Schema to Excel", "ℹ️ About"]
+    )
+    
+    if page == "🏠 Home":
+        show_home_page()
+    elif page == "📊 Schema Mapping":
         show_mapping_page(services)
-    elif page == "WSDL to XSD":
+    elif page == "🔧 WSDL to XSD":
         show_wsdl_to_xsd_page(services)
-    elif page == "Schema to Excel":
+    elif page == "📋 Schema to Excel":
         show_schema_to_excel_page(services)
-    elif page == "About":
+    elif page == "ℹ️ About":
         show_about_page()
 
+def show_home_page():
+    st.markdown('<div class="section-header"><h2>🏠 Welcome to The Forge</h2></div>', unsafe_allow_html=True)
+    
+    st.markdown("""
+    **The Forge** is your comprehensive schema transformation toolkit. Transform, map, and analyze schema files with ease.
+    """)
+    
+    # Feature cards
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        <div class="feature-card">
+            <h3>📊 Schema Mapping</h3>
+            <p>Create field mappings between different schema formats (XSD, JSON Schema). 
+            Automatically detect similarities and generate comprehensive mapping documentation.</p>
+            <ul>
+                <li>Support for XSD and JSON Schema</li>
+                <li>Automatic similarity detection</li>
+                <li>Excel export with detailed mapping</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div class="feature-card">
+            <h3>🔧 WSDL to XSD Extraction</h3>
+            <p>Extract XSD schemas from WSDL files. Perfect for working with web services and SOAP APIs.</p>
+            <ul>
+                <li>Parse complex WSDL files</li>
+                <li>Extract embedded XSD schemas</li>
+                <li>Clean, formatted output</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div class="feature-card">
+            <h3>📋 Schema to Excel</h3>
+            <p>Convert schema files to Excel format for easy analysis and documentation.</p>
+            <ul>
+                <li>Detailed schema structure</li>
+                <li>Element properties and types</li>
+                <li>Ready for analysis</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div class="feature-card">
+            <h3>🚀 Key Features</h3>
+            <ul>
+                <li>✅ No compilation issues</li>
+                <li>✅ Lightweight dependencies</li>
+                <li>✅ Cross-platform compatibility</li>
+                <li>✅ Production ready</li>
+                <li>✅ Modern web interface</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Quick start guide
+    st.markdown('<div class="section-header"><h3>🚀 Quick Start</h3></div>', unsafe_allow_html=True)
+    
+    st.markdown("""
+    1. **Schema Mapping**: Upload source and target schema files, then generate mappings
+    2. **WSDL to XSD**: Upload a WSDL file to extract embedded XSD schemas
+    3. **Schema to Excel**: Upload any schema file to convert it to Excel format
+    
+    All tools support XSD, XML, JSON Schema, and WSDL file formats.
+    """)
+
 def show_mapping_page(services):
-    """Mapping functionality page"""
-    st.header("📊 Schema Mapping")
-    st.markdown("Create field mappings between different schema formats (XSD, JSON Schema)")
+    st.markdown('<div class="section-header"><h2>📊 Schema Mapping</h2></div>', unsafe_allow_html=True)
+    
+    st.markdown("""
+    Create field mappings between different schema formats. Upload source and target schema files to generate comprehensive mapping documentation.
+    """)
     
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("Source Schema")
+        st.markdown("### 📤 Source Schema")
         source_file = st.file_uploader(
             "Upload source schema file",
             type=['xsd', 'xml', 'json'],
-            key="source_file"
+            key="source",
+            help="Upload your source schema file (XSD, XML, or JSON Schema)"
         )
         
         if source_file:
-            st.success(f"✅ Source file uploaded: {source_file.name}")
-            
-            # Display file preview
-            if source_file.name.endswith('.json'):
-                try:
-                    content = source_file.read()
-                    source_file.seek(0)  # Reset file pointer
-                    data = json.loads(content.decode('utf-8'))
-                    st.json(data)
-                except Exception as e:
-                    st.error(f"Error reading JSON file: {e}")
+            st.markdown(f'<div class="success-message">✅ Uploaded: {source_file.name}</div>', unsafe_allow_html=True)
+            # Show file preview
+            content = source_file.read()
+            source_file.seek(0)  # Reset file pointer
+            with st.expander("📄 File Preview"):
+                st.code(content.decode('utf-8')[:1000] + "..." if len(content) > 1000 else content.decode('utf-8'), language="xml")
     
     with col2:
-        st.subheader("Target Schema")
+        st.markdown("### 📥 Target Schema")
         target_file = st.file_uploader(
             "Upload target schema file",
             type=['xsd', 'xml', 'json'],
-            key="target_file"
+            key="target",
+            help="Upload your target schema file (XSD, XML, or JSON Schema)"
         )
         
         if target_file:
-            st.success(f"✅ Target file uploaded: {target_file.name}")
-            
-            # Display file preview
-            if target_file.name.endswith('.json'):
-                try:
-                    content = target_file.read()
-                    target_file.seek(0)  # Reset file pointer
-                    data = json.loads(content.decode('utf-8'))
-                    st.json(data)
-                except Exception as e:
-                    st.error(f"Error reading JSON file: {e}")
+            st.markdown(f'<div class="success-message">✅ Uploaded: {target_file.name}</div>', unsafe_allow_html=True)
+            # Show file preview
+            content = target_file.read()
+            target_file.seek(0)  # Reset file pointer
+            with st.expander("📄 File Preview"):
+                st.code(content.decode('utf-8')[:1000] + "..." if len(content) > 1000 else content.decode('utf-8'), language="xml")
     
-    # Mapping options
-    st.subheader("Mapping Options")
+    # Settings
+    st.markdown("### ⚙️ Settings")
     col1, col2 = st.columns(2)
-    
     with col1:
-        threshold = st.slider("Similarity Threshold", 0.0, 1.0, 0.7, 0.1)
-    
+        threshold = st.slider("Similarity Threshold", 0.0, 1.0, 0.7, 0.1, 
+                            help="Minimum similarity score for automatic field matching")
     with col2:
-        keep_case = st.checkbox("Keep Original Case", value=False)
+        keep_case = st.checkbox("Keep Original Case", value=False, 
+                               help="Preserve original field names case")
     
     # Generate mapping button
     if st.button("🚀 Generate Mapping", type="primary", use_container_width=True):
         if source_file and target_file:
-            with st.spinner("Generating mapping..."):
+            with st.spinner("🔄 Generating mapping..."):
                 try:
-                    # Process the mapping
-                    mapping_result = process_mapping(
-                        services, source_file, target_file, threshold, keep_case
-                    )
-                    
-                    if mapping_result:
-                        st.success("✅ Mapping generated successfully!")
-                        
-                        # Download button
+                    result = process_mapping(source_file, target_file, services, threshold, keep_case)
+                    if result:
+                        st.markdown('<div class="success-message">✅ Mapping generated successfully!</div>', unsafe_allow_html=True)
                         st.download_button(
-                            label="📥 Download Mapping Excel",
-                            data=mapping_result,
+                            label="📥 Download Excel File",
+                            data=result,
                             file_name="schema_mapping.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True
                         )
-                        
-                        # Show preview
-                        st.subheader("Mapping Preview")
-                        # Here you would show a preview of the mapping
-                        st.info("Mapping preview would be displayed here")
-                        
+                    else:
+                        st.markdown('<div class="error-message">❌ Failed to generate mapping</div>', unsafe_allow_html=True)
                 except Exception as e:
-                    st.error(f"❌ Error generating mapping: {str(e)}")
+                    st.markdown(f'<div class="error-message">❌ Error: {str(e)}</div>', unsafe_allow_html=True)
         else:
-            st.warning("⚠️ Please upload both source and target files")
+            st.markdown('<div class="warning-message">⚠️ Please upload both source and target schema files</div>', unsafe_allow_html=True)
 
 def show_wsdl_to_xsd_page(services):
-    """WSDL to XSD extraction page"""
-    st.header("🔧 WSDL to XSD Extraction")
-    st.markdown("Extract XSD schemas from WSDL files")
+    st.markdown('<div class="section-header"><h2>🔧 WSDL to XSD Extraction</h2></div>', unsafe_allow_html=True)
     
-    # File upload
+    st.markdown("""
+    Extract XSD schemas from WSDL files. Perfect for working with web services and SOAP APIs.
+    """)
+    
     wsdl_file = st.file_uploader(
         "Upload WSDL file",
         type=['wsdl', 'xml'],
-        key="wsdl_file"
+        key="wsdl",
+        help="Upload your WSDL file to extract embedded XSD schemas"
     )
     
     if wsdl_file:
-        st.success(f"✅ WSDL file uploaded: {wsdl_file.name}")
-        
-        # Show file content preview
+        st.markdown(f'<div class="success-message">✅ Uploaded: {wsdl_file.name}</div>', unsafe_allow_html=True)
+        # Show file preview
         content = wsdl_file.read()
         wsdl_file.seek(0)  # Reset file pointer
-        
-        with st.expander("📄 WSDL Content Preview"):
-            st.code(content.decode('utf-8'), language='xml')
+        with st.expander("📄 WSDL Preview"):
+            st.code(content.decode('utf-8')[:1000] + "..." if len(content) > 1000 else content.decode('utf-8'), language="xml")
     
-    # Extract button
     if st.button("🔧 Extract XSD", type="primary", use_container_width=True):
         if wsdl_file:
-            with st.spinner("Extracting XSD from WSDL..."):
+            with st.spinner("🔄 Extracting XSD..."):
                 try:
-                    # Process WSDL to XSD
-                    xsd_content = process_wsdl_to_xsd(wsdl_file)
-                    
-                    if xsd_content:
-                        st.success("✅ XSD extracted successfully!")
-                        
-                        # Download button
+                    result = process_wsdl_to_xsd(wsdl_file, services)
+                    if result:
+                        st.markdown('<div class="success-message">✅ XSD extracted successfully!</div>', unsafe_allow_html=True)
                         st.download_button(
-                            label="📥 Download XSD",
-                            data=xsd_content,
+                            label="📥 Download XSD File",
+                            data=result,
                             file_name="extracted_schema.xsd",
-                            mime="application/xml"
+                            mime="application/xml",
+                            use_container_width=True
                         )
-                        
-                        # Show XSD content
-                        with st.expander("📄 Extracted XSD Content"):
-                            st.code(xsd_content, language='xml')
-                        
+                    else:
+                        st.markdown('<div class="error-message">❌ Failed to extract XSD</div>', unsafe_allow_html=True)
                 except Exception as e:
-                    st.error(f"❌ Error extracting XSD: {str(e)}")
+                    st.markdown(f'<div class="error-message">❌ Error: {str(e)}</div>', unsafe_allow_html=True)
         else:
-            st.warning("⚠️ Please upload a WSDL file")
+            st.markdown('<div class="warning-message">⚠️ Please upload a WSDL file</div>', unsafe_allow_html=True)
 
 def show_schema_to_excel_page(services):
-    """Schema to Excel conversion page"""
-    st.header("📊 Schema to Excel")
-    st.markdown("Convert schema files to Excel format for analysis")
+    st.markdown('<div class="section-header"><h2>📋 Schema to Excel</h2></div>', unsafe_allow_html=True)
     
-    # File upload
+    st.markdown("""
+    Convert schema files to Excel format for easy analysis and documentation.
+    """)
+    
     schema_file = st.file_uploader(
         "Upload schema file",
         type=['xsd', 'xml', 'json'],
-        key="schema_file"
+        key="schema",
+        help="Upload your schema file (XSD, XML, or JSON Schema)"
     )
     
     if schema_file:
-        st.success(f"✅ Schema file uploaded: {schema_file.name}")
-        
+        st.markdown(f'<div class="success-message">✅ Uploaded: {schema_file.name}</div>', unsafe_allow_html=True)
         # Show file preview
         content = schema_file.read()
         schema_file.seek(0)  # Reset file pointer
-        
-        with st.expander("📄 Schema Content Preview"):
-            if schema_file.name.endswith('.json'):
-                try:
-                    data = json.loads(content.decode('utf-8'))
-                    st.json(data)
-                except Exception as e:
-                    st.error(f"Error reading JSON: {e}")
-            else:
-                st.code(content.decode('utf-8'), language='xml')
+        with st.expander("📄 File Preview"):
+            st.code(content.decode('utf-8')[:1000] + "..." if len(content) > 1000 else content.decode('utf-8'), language="xml")
     
-    # Conversion options
-    st.subheader("Conversion Options")
-    keep_case = st.checkbox("Keep Original Case", value=False)
+    keep_case = st.checkbox("Keep Original Case", value=False, key="schema_case",
+                           help="Preserve original field names case")
     
-    # Convert button
-    if st.button("📊 Convert to Excel", type="primary", use_container_width=True):
+    if st.button("📋 Convert to Excel", type="primary", use_container_width=True):
         if schema_file:
-            with st.spinner("Converting schema to Excel..."):
+            with st.spinner("🔄 Converting to Excel..."):
                 try:
-                    # Process schema to Excel
-                    excel_data = process_schema_to_excel(
-                        services, schema_file, keep_case
-                    )
-                    
-                    if excel_data:
-                        st.success("✅ Excel file generated successfully!")
-                        
-                        # Download button
+                    result = process_schema_to_excel(schema_file, services, keep_case)
+                    if result:
+                        st.markdown('<div class="success-message">✅ Excel file generated successfully!</div>', unsafe_allow_html=True)
                         st.download_button(
-                            label="📥 Download Excel",
-                            data=excel_data,
+                            label="📥 Download Excel File",
+                            data=result,
                             file_name="schema_structure.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True
                         )
-                        
-                        # Show preview
-                        st.subheader("Excel Preview")
-                        st.info("Excel preview would be displayed here")
-                        
+                    else:
+                        st.markdown('<div class="error-message">❌ Failed to generate Excel file</div>', unsafe_allow_html=True)
                 except Exception as e:
-                    st.error(f"❌ Error converting to Excel: {str(e)}")
+                    st.markdown(f'<div class="error-message">❌ Error: {str(e)}</div>', unsafe_allow_html=True)
         else:
-            st.warning("⚠️ Please upload a schema file")
+            st.markdown('<div class="warning-message">⚠️ Please upload a schema file</div>', unsafe_allow_html=True)
 
 def show_about_page():
-    """About page"""
-    st.header("ℹ️ About The Forge")
+    st.markdown('<div class="section-header"><h2>ℹ️ About The Forge</h2></div>', unsafe_allow_html=True)
     
     st.markdown("""
-    ### What is The Forge?
+    **The Forge** is a powerful schema transformation tool that provides comprehensive capabilities for working with schema files.
     
-    The Forge is a powerful schema transformation and mapping tool that helps you:
+    ### 🎯 Core Features
     
-    - **Map fields** between different schema formats (XSD, JSON Schema)
-    - **Extract XSD schemas** from WSDL files
-    - **Convert schemas** to Excel format for analysis
-    - **Transform data structures** between different formats
+    - **📊 Schema Mapping**: Create field mappings between different schema formats (XSD, JSON Schema)
+    - **🔧 WSDL to XSD Extraction**: Extract XSD schemas from WSDL files
+    - **📋 Schema to Excel**: Convert schema files to Excel format for analysis
     
-    ### Features
+    ### 📁 Supported Formats
     
-    🔧 **Schema Mapping**: Create intelligent field mappings with similarity scoring
-    📊 **Excel Export**: Convert schemas to Excel for easy analysis
-    🔄 **Format Conversion**: Convert between XSD and JSON Schema
-    📋 **WSDL Processing**: Extract XSD schemas from WSDL files
+    **Input Formats:**
+    - XSD (.xsd)
+    - XML (.xml)
+    - JSON Schema (.json)
+    - WSDL (.wsdl, .xml)
     
-    ### Supported Formats
+    **Output Formats:**
+    - Excel (.xlsx)
+    - XSD (.xsd)
     
-    - **Input**: XSD, JSON Schema, WSDL, XML
-    - **Output**: Excel (.xlsx), XSD, JSON Schema
+    ### 🚀 Key Benefits
     
-    ### Version
+    - ✅ **No compilation issues** - Pure Python implementation
+    - ✅ **Lightweight dependencies** - Minimal external requirements
+    - ✅ **Cross-platform compatibility** - Works on Windows, macOS, Linux
+    - ✅ **Production ready** - Robust error handling and validation
+    - ✅ **Modern web interface** - Clean, responsive Streamlit UI
     
-    This is the web version of The Forge v8, adapted for online deployment using Streamlit.
+    ### 🔧 Technical Details
+    
+    This web version is based on The Forge v8 desktop application, adapted for online deployment with Streamlit.
+    The application uses microservices architecture for modular functionality and easy maintenance.
+    
+    ### 📞 Support
+    
+    For issues, questions, or feature requests, please refer to the project documentation or create an issue in the repository.
+    """)
+    
+    # Version info
+    st.markdown("### 📋 Version Information")
+    st.code("""
+    The Forge Web App v1.0.0
+    Built with Streamlit
+    Based on The Forge v8 Desktop Application
     """)
 
-def process_mapping(services, source_file, target_file, threshold, keep_case):
-    """Process mapping between source and target schemas"""
+def process_mapping(source_file, target_file, services, threshold, keep_case):
+    """Process schema mapping"""
     try:
         # Create temporary files
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{source_file.name.split('.')[-1]}") as source_temp:
-            source_temp.write(source_file.read())
+            source_file.save(source_temp.name)
             source_temp_path = source_temp.name
         
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{target_file.name.split('.')[-1]}") as target_temp:
-            target_temp.write(target_file.read())
+            target_file.save(target_temp.name)
             target_temp_path = target_temp.name
         
         # Parse schemas
@@ -375,47 +441,48 @@ def process_mapping(services, source_file, target_file, threshold, keep_case):
         target_data = parse_schema_file(target_temp_path, services['xsd_parser'])
         
         # Generate mapping
-        mapping_data = services['mapping_service'].generate_mapping_from_schemas(
-            source_data, target_data
-        )
+        mapping_data = services['mapping_service'].generate_mapping_from_schemas(source_data, target_data)
         
         # Create Excel file
         output_buffer = BytesIO()
-        services['excel_exporter'].export(
-            {'mapping': mapping_data}, output_buffer
-        )
+        services['excel_exporter'].export({'mapping': mapping_data}, output_buffer)
         
         # Clean up temp files
         os.unlink(source_temp_path)
         os.unlink(target_temp_path)
         
+        output_buffer.seek(0)
         return output_buffer.getvalue()
         
     except Exception as e:
-        st.error(f"Error in mapping process: {str(e)}")
+        st.error(f"Error in mapping: {str(e)}")
         return None
 
-def process_wsdl_to_xsd(wsdl_file):
+def process_wsdl_to_xsd(wsdl_file, services):
     """Process WSDL to XSD extraction"""
     try:
-        content = wsdl_file.read()
-        wsdl_content = content.decode('utf-8')
+        # Read WSDL content
+        wsdl_content = wsdl_file.read().decode('utf-8')
         
-        # Extract XSD from WSDL
+        # Extract XSD
         xsd_content = merge_xsd_from_wsdl(wsdl_content)
+        
+        if not xsd_content or xsd_content.startswith("Error"):
+            st.error(f"Error extracting XSD: {xsd_content}")
+            return None
         
         return xsd_content.encode('utf-8')
         
     except Exception as e:
-        st.error(f"Error in WSDL to XSD process: {str(e)}")
+        st.error(f"Error in WSDL extraction: {str(e)}")
         return None
 
-def process_schema_to_excel(services, schema_file, keep_case):
+def process_schema_to_excel(schema_file, services, keep_case):
     """Process schema to Excel conversion"""
     try:
         # Create temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{schema_file.name.split('.')[-1]}") as temp_file:
-            temp_file.write(schema_file.read())
+            schema_file.save(temp_file.name)
             temp_path = temp_file.name
         
         # Parse schema
@@ -423,17 +490,16 @@ def process_schema_to_excel(services, schema_file, keep_case):
         
         # Create Excel file
         output_buffer = BytesIO()
-        services['excel_exporter'].export(
-            {'schema': schema_data}, output_buffer
-        )
+        services['excel_exporter'].export({'schema': schema_data}, output_buffer)
         
         # Clean up temp file
         os.unlink(temp_path)
         
+        output_buffer.seek(0)
         return output_buffer.getvalue()
         
     except Exception as e:
-        st.error(f"Error in schema to Excel process: {str(e)}")
+        st.error(f"Error in schema to Excel: {str(e)}")
         return None
 
 def parse_schema_file(file_path, xsd_parser):
