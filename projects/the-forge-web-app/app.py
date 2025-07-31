@@ -1210,7 +1210,7 @@ def process_mapping(source_file, target_file, services, source_case="Original", 
                         st.success("🎉 All validations passed successfully!")
             
             # Clean up temp validation file
-            os.unlink(temp_excel_path)
+git add .            os.unlink(temp_excel_path)
         except Exception as e:
             st.error(f"❌ Error in post-processing validator: {e}")
         
