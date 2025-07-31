@@ -36,10 +36,10 @@ st.set_page_config(
     }
 )
 
-# Ancient Forge CSS Theme
+# Forge CSS Theme
 st.markdown("""
 <style>
-    /* Ancient Forge Color Palette */
+    /* Forge Color Palette */
     :root {
         --forge-black: #0a0a0a;
         --forge-dark: #1a1a1a;
@@ -92,7 +92,7 @@ st.markdown("""
         box-shadow: var(--forge-shadow);
     }
     
-    /* Ancient Forge Header */
+    /* Forge Header */
     .main-header {
         background: linear-gradient(135deg, var(--forge-charcoal) 0%, var(--forge-steel) 100%);
         color: var(--forge-text);
@@ -430,7 +430,7 @@ def main():
     st.markdown('''
         <div class="main-header">
             <h1>🔨 The Forge</h1>
-            <p>Ancient Schema Transformation & Mapping Tool</p>
+            <p>Schema Transformation & Mapping Tool</p>
         </div>
     ''', unsafe_allow_html=True)
     
@@ -448,20 +448,20 @@ def main():
     if 'current_page' not in st.session_state:
         st.session_state.current_page = "Home"
     
-    # Navigation Menu
-    if st.sidebar.button("🏠 Home", key="home", use_container_width=True):
+    # Navigation Menu with unique keys
+    if st.sidebar.button("🏠 Home", key="nav_home", use_container_width=True):
         st.session_state.current_page = "Home"
     
-    if st.sidebar.button("📊 Schema Mapping", key="mapping", use_container_width=True):
+    if st.sidebar.button("📊 Schema Mapping", key="nav_mapping", use_container_width=True):
         st.session_state.current_page = "Schema Mapping"
     
-    if st.sidebar.button("🔧 WSDL to XSD", key="wsdl", use_container_width=True):
+    if st.sidebar.button("🔧 WSDL to XSD", key="nav_wsdl", use_container_width=True):
         st.session_state.current_page = "WSDL to XSD"
     
-    if st.sidebar.button("📋 Schema to Excel", key="excel", use_container_width=True):
+    if st.sidebar.button("📋 Schema to Excel", key="nav_excel", use_container_width=True):
         st.session_state.current_page = "Schema to Excel"
     
-    if st.sidebar.button("ℹ️ About", key="about", use_container_width=True):
+    if st.sidebar.button("ℹ️ About", key="nav_about", use_container_width=True):
         st.session_state.current_page = "About"
     
     # Sidebar Footer
@@ -643,7 +643,7 @@ def show_mapping_page(services):
         source_file = st.file_uploader(
             "Upload source schema file",
             type=['xsd', 'xml', 'json'],
-            key="source",
+            key="source_uploader",
             help="Upload your source schema file (XSD, XML, or JSON Schema)"
         )
         
@@ -669,7 +669,7 @@ def show_mapping_page(services):
         target_file = st.file_uploader(
             "Upload target schema file",
             type=['xsd', 'xml', 'json'],
-            key="target",
+            key="target_uploader",
             help="Upload your target schema file (XSD, XML, or JSON Schema)"
         )
         
@@ -741,7 +741,7 @@ def show_wsdl_to_xsd_page(services):
     wsdl_file = st.file_uploader(
         "Upload WSDL file",
         type=['wsdl', 'xml'],
-        key="wsdl",
+        key="wsdl_uploader",
         help="Upload your WSDL file to extract embedded XSD schemas"
     )
     
@@ -790,7 +790,7 @@ def show_schema_to_excel_page(services):
     schema_file = st.file_uploader(
         "Upload schema file",
         type=['xsd', 'xml', 'json'],
-        key="schema",
+        key="schema_uploader",
         help="Upload your schema file (XSD, XML, or JSON Schema)"
     )
     
@@ -1210,7 +1210,7 @@ def process_mapping(source_file, target_file, services, source_case="Original", 
                         st.success("🎉 All validations passed successfully!")
             
             # Clean up temp validation file
-git add .            os.unlink(temp_excel_path)
+            os.unlink(temp_excel_path)
         except Exception as e:
             st.error(f"❌ Error in post-processing validator: {e}")
         
@@ -1317,6 +1317,3 @@ def parse_schema_file(file_path, services):
 
 if __name__ == "__main__":
     main()
-
-if __name__ == "__main__":
-    main() 
