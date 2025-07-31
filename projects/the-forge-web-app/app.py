@@ -289,7 +289,7 @@ def main():
     # Header
     st.markdown('''
         <div class="main-header">
-            <h1>🔧 The Forge - Schema Transformation Tool</h1>
+            <h1>🔨 The Forge - Schema Transformation Tool</h1>
             <p style="font-size: 1.2rem; margin-top: 0.5rem;">Powerful schema transformation and mapping tool</p>
         </div>
     ''', unsafe_allow_html=True)
@@ -300,7 +300,7 @@ def main():
     # Professional Sidebar Navigation
     st.sidebar.markdown("""
         <div class="sidebar-header">
-            <h2>🔧 The Forge</h2>
+            <h2>🔨 The Forge</h2>
             <p>Schema Transformation Tool</p>
         </div>
     """, unsafe_allow_html=True)
