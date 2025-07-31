@@ -10,6 +10,7 @@ import os
 import sys
 sys.path.append(os.path.dirname(__file__))
 from xsd_parser_service import XSDParser
+from case_converter_service import pascal_to_camel
 
 # This function will be replaced by the UI's log function at runtime
 # For now, it just collects logs in a list for possible export
@@ -22,10 +23,18 @@ def excel_sheet_name(name):
     return name[:31]
 
 
+def normalize_field_name(name):
+    """Normalize field name to lowercase for case-insensitive comparison"""
+    if not name:
+        return name
+    # Convert to lowercase for consistent comparison
+    return name.lower()
+
+
 def reconstruct_excel_paths(df, prefix):
     """
     Reconstructs hierarchical paths from Level1_src...Level8_src or Level1_tgt...Level8_tgt columns.
-    Returns a dict: {path: row_index}
+    Returns a dict: {normalized_path: row_index}
     """
     if not PANDAS_AVAILABLE:
         return {}
@@ -36,7 +45,9 @@ def reconstruct_excel_paths(df, prefix):
         levels = [str(row[col]) for col in level_cols if pd.notnull(row[col]) and str(row[col]).strip()]
         if levels:
             path = '/'.join(levels)
-            paths[path] = idx
+            # Normalize the path for case-insensitive comparison
+            normalized_path = '/'.join([normalize_field_name(level) for level in levels])
+            paths[normalized_path] = idx
     return paths
 
 
@@ -60,9 +71,11 @@ def validate_excel_output(xsd_path: str, excel_path: str) -> None:
             continue
         msg = row['levels'][0]
         path = '/'.join([lvl for lvl in row['levels'] if lvl])
+        # Normalize the path for case-insensitive comparison
+        normalized_path = '/'.join([normalize_field_name(lvl) for lvl in row['levels'] if lvl])
         if msg not in message_fields:
             message_fields[msg] = {}
-        message_fields[msg][path] = row
+        message_fields[msg][normalized_path] = row
     # 2. Load Excel (all sheets)
     try:
         xl = pd.ExcelFile(excel_path)
@@ -90,36 +103,42 @@ def validate_excel_output(xsd_path: str, excel_path: str) -> None:
         log_to_ui(f"\n[VALIDATE] Validating message '{msg}' in sheet '{msg}'")
         src_paths = reconstruct_excel_paths(df, 'src')
         tgt_paths = reconstruct_excel_paths(df, 'tgt')
-        for path, meta in fields.items():
-            if path not in src_paths:
-                log_to_ui(f"[ERROR] Field [{path}] missing from Excel (sheet '{msg}').")
+        for normalized_path, meta in fields.items():
+            if normalized_path not in src_paths:
+                # Get original path for display
+                original_path = '/'.join([lvl for lvl in meta['levels'] if lvl])
+                log_to_ui(f"[ERROR] Field [{original_path}] missing from Excel (sheet '{msg}').")
                 sheet_errors += 1
                 continue
-            idx = src_paths[path]
+            idx = src_paths[normalized_path]
             row = df.iloc[idx]
             excel_type = str(row.get('Type_src', '')).strip()
+            # Get original path for display
+            original_path = '/'.join([lvl for lvl in meta['levels'] if lvl])
             if meta['Type'] and excel_type and meta['Type'] != excel_type:
-                log_to_ui(f"[WARNING] Type mismatch for [{path}] in sheet '{msg}': expected '{meta['Type']}', found '{excel_type}'")
+                log_to_ui(f"[WARNING] Type mismatch for [{original_path}] in sheet '{msg}': expected '{meta['Type']}', found '{excel_type}'")
                 sheet_warnings += 1
             excel_card = str(row.get('Cardinality_src', '')).strip()
             expected_card = meta['Cardinality']
             if excel_card and excel_card != expected_card:
-                log_to_ui(f"[WARNING] Cardinality mismatch for [{path}] in sheet '{msg}': expected '{expected_card}', found '{excel_card}'")
+                log_to_ui(f"[WARNING] Cardinality mismatch for [{original_path}] in sheet '{msg}': expected '{expected_card}', found '{excel_card}'")
                 sheet_warnings += 1
-            log_to_ui(f"[SUCCESS] Field [{path}] validated successfully in sheet '{msg}'.")
+            log_to_ui(f"[SUCCESS] Field [{original_path}] validated successfully in sheet '{msg}'.")
             sheet_verified += 1
         # If source and target XSD are the same, check symmetry
         if set(src_paths.keys()) == set(tgt_paths.keys()) and src_paths:
-            for path in src_paths:
-                src_idx = src_paths[path]
-                tgt_idx = tgt_paths[path]
+            for normalized_path in src_paths:
+                src_idx = src_paths[normalized_path]
+                tgt_idx = tgt_paths[normalized_path]
                 src_row = df.iloc[src_idx]
                 tgt_row = df.iloc[tgt_idx]
+                # Get original path for display (from source row)
+                original_path = '/'.join([str(src_row.get(f'Level{i}_src', '')) for i in range(1, 9) if str(src_row.get(f'Level{i}_src', '')).strip()])
                 for col in ['Type', 'Cardinality']:
                     src_val = str(src_row.get(f'{col}_src', '')).strip()
                     tgt_val = str(tgt_row.get(f'{col}_tgt', '')).strip()
                     if src_val != tgt_val:
-                        log_to_ui(f"[WARNING] Source/Target mismatch for [{path}] column '{col}' in sheet '{msg}': src='{src_val}', tgt='{tgt_val}'")
+                        log_to_ui(f"[WARNING] Source/Target mismatch for [{original_path}] column '{col}' in sheet '{msg}': src='{src_val}', tgt='{tgt_val}'")
                         sheet_warnings += 1
         log_to_ui(f"[VALIDATE] Message '{msg}' validation: {sheet_errors} errors, {sheet_warnings} warning(s), {sheet_verified} fields verified.")
         total_errors += sheet_errors
