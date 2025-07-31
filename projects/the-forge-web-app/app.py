@@ -439,6 +439,54 @@ def show_mapping_page(services):
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             use_container_width=True
                         )
+                        
+                        # Professional log display below download button
+                        if show_debug_logs and frontend_handler.logs:
+                            st.markdown("---")
+                            with st.expander("📋 Execution Logs", expanded=True):
+                                # Create a professional log display
+                                log_html = """
+                                <div style="
+                                    max-height: 300px; 
+                                    overflow-y: auto; 
+                                    border: 1px solid #e0e0e0; 
+                                    border-radius: 8px; 
+                                    padding: 12px; 
+                                    background-color: #f8f9fa;
+                                    font-family: 'Courier New', monospace;
+                                    font-size: 12px;
+                                    line-height: 1.4;
+                                ">
+                                """
+                                
+                                for log_entry in frontend_handler.logs:
+                                    timestamp = log_entry['timestamp']
+                                    level = log_entry['level']
+                                    message = log_entry['message']
+                                    
+                                    # Color coding based on log level
+                                    if level == 'ERROR':
+                                        color = '#dc3545'
+                                        icon = '❌'
+                                    elif level == 'WARNING':
+                                        color = '#ffc107'
+                                        icon = '⚠️'
+                                    elif level == 'DEBUG':
+                                        color = '#17a2b8'
+                                        icon = '🔍'
+                                    else:  # INFO
+                                        color = '#6c757d'
+                                        icon = 'ℹ️'
+                                    
+                                    log_html += f"""
+                                    <div style="margin-bottom: 4px; padding: 2px 0;">
+                                        <span style="color: {color}; font-weight: bold;">{icon} [{timestamp}] {level}:</span>
+                                        <span style="color: #333;"> {message}</span>
+                                    </div>
+                                    """
+                                
+                                log_html += "</div>"
+                                st.markdown(log_html, unsafe_allow_html=True)
                     else:
                         st.markdown('<div class="error-message">❌ Failed to generate mapping</div>', unsafe_allow_html=True)
                 except Exception as e:
@@ -497,6 +545,54 @@ def show_wsdl_to_xsd_page(services):
                             mime="application/xml",
                             use_container_width=True
                         )
+                        
+                        # Professional log display below download button
+                        if show_debug_logs and frontend_handler.logs:
+                            st.markdown("---")
+                            with st.expander("📋 Execution Logs", expanded=True):
+                                # Create a professional log display
+                                log_html = """
+                                <div style="
+                                    max-height: 300px; 
+                                    overflow-y: auto; 
+                                    border: 1px solid #e0e0e0; 
+                                    border-radius: 8px; 
+                                    padding: 12px; 
+                                    background-color: #f8f9fa;
+                                    font-family: 'Courier New', monospace;
+                                    font-size: 12px;
+                                    line-height: 1.4;
+                                ">
+                                """
+                                
+                                for log_entry in frontend_handler.logs:
+                                    timestamp = log_entry['timestamp']
+                                    level = log_entry['level']
+                                    message = log_entry['message']
+                                    
+                                    # Color coding based on log level
+                                    if level == 'ERROR':
+                                        color = '#dc3545'
+                                        icon = '❌'
+                                    elif level == 'WARNING':
+                                        color = '#ffc107'
+                                        icon = '⚠️'
+                                    elif level == 'DEBUG':
+                                        color = '#17a2b8'
+                                        icon = '🔍'
+                                    else:  # INFO
+                                        color = '#6c757d'
+                                        icon = 'ℹ️'
+                                    
+                                    log_html += f"""
+                                    <div style="margin-bottom: 4px; padding: 2px 0;">
+                                        <span style="color: {color}; font-weight: bold;">{icon} [{timestamp}] {level}:</span>
+                                        <span style="color: #333;"> {message}</span>
+                                    </div>
+                                    """
+                                
+                                log_html += "</div>"
+                                st.markdown(log_html, unsafe_allow_html=True)
                     else:
                         st.markdown('<div class="error-message">❌ Failed to extract XSD</div>', unsafe_allow_html=True)
                 except Exception as e:
@@ -558,6 +654,54 @@ def show_schema_to_excel_page(services):
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             use_container_width=True
                         )
+                        
+                        # Professional log display below download button
+                        if show_debug_logs and frontend_handler.logs:
+                            st.markdown("---")
+                            with st.expander("📋 Execution Logs", expanded=True):
+                                # Create a professional log display
+                                log_html = """
+                                <div style="
+                                    max-height: 300px; 
+                                    overflow-y: auto; 
+                                    border: 1px solid #e0e0e0; 
+                                    border-radius: 8px; 
+                                    padding: 12px; 
+                                    background-color: #f8f9fa;
+                                    font-family: 'Courier New', monospace;
+                                    font-size: 12px;
+                                    line-height: 1.4;
+                                ">
+                                """
+                                
+                                for log_entry in frontend_handler.logs:
+                                    timestamp = log_entry['timestamp']
+                                    level = log_entry['level']
+                                    message = log_entry['message']
+                                    
+                                    # Color coding based on log level
+                                    if level == 'ERROR':
+                                        color = '#dc3545'
+                                        icon = '❌'
+                                    elif level == 'WARNING':
+                                        color = '#ffc107'
+                                        icon = '⚠️'
+                                    elif level == 'DEBUG':
+                                        color = '#17a2b8'
+                                        icon = '🔍'
+                                    else:  # INFO
+                                        color = '#6c757d'
+                                        icon = 'ℹ️'
+                                    
+                                    log_html += f"""
+                                    <div style="margin-bottom: 4px; padding: 2px 0;">
+                                        <span style="color: {color}; font-weight: bold;">{icon} [{timestamp}] {level}:</span>
+                                        <span style="color: #333;"> {message}</span>
+                                    </div>
+                                    """
+                                
+                                log_html += "</div>"
+                                st.markdown(log_html, unsafe_allow_html=True)
                     else:
                         st.markdown('<div class="error-message">❌ Failed to generate Excel file</div>', unsafe_allow_html=True)
                 except Exception as e:
