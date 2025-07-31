@@ -144,10 +144,11 @@ st.markdown("""
     .sidebar-header {
         background: #2d2d2d;
         color: #ffffff;
-        padding: 1.5rem 1rem;
-        margin: -1rem -1rem 1.5rem -1rem;
+        padding: 2rem 1.5rem;
+        margin: -1rem -1rem 2rem -1rem;
         text-align: center;
         border-bottom: 1px solid #444444;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
     
     .sidebar-header h2 {
@@ -172,8 +173,8 @@ st.markdown("""
         font-size: 0.75rem;
         text-transform: uppercase;
         letter-spacing: 1px;
-        margin: 1.5rem 0 0.75rem 0;
-        padding: 0.25rem 0;
+        margin: 2rem 0 1rem 0;
+        padding: 0.5rem 0;
         border-bottom: 1px solid #444444;
     }
     
@@ -182,20 +183,22 @@ st.markdown("""
         background: transparent;
         color: #ffffff;
         border: none;
-        border-radius: 6px;
-        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
         font-weight: 400;
         font-size: 0.9rem;
-        transition: all 0.2s ease;
-        margin: 0.125rem 0;
+        transition: all 0.3s ease;
+        margin: 0.25rem 0;
         width: 100%;
         text-align: left;
         position: relative;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
     
     .sidebar .stButton > button:hover {
         background: #333333;
-        transform: translateX(3px);
+        transform: translateX(4px);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
     }
     
     /* Active/Current Page Button */
@@ -203,14 +206,16 @@ st.markdown("""
         background: #ff6b35;
         color: #ffffff;
         font-weight: 500;
+        box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
     }
     
     /* Divider Lines */
     .sidebar-divider {
         height: 1px;
         background: #444444;
-        margin: 1rem 0;
+        margin: 1.5rem 0;
         border: none;
+        opacity: 0.6;
     }
     
 
@@ -218,11 +223,14 @@ st.markdown("""
     /* Footer Section */
     .sidebar-footer {
         margin-top: auto;
-        padding: 1rem 0;
+        padding: 1.5rem 0;
         text-align: center;
         color: #888888;
         font-size: 0.75rem;
         border-top: 1px solid #444444;
+        background: #2d2d2d;
+        margin: 2rem -1rem -1rem -1rem;
+        padding: 1.5rem 1rem;
     }
     
     .sidebar-footer .version {
@@ -318,7 +326,7 @@ def main():
     # Home Button
     home_active = st.session_state.current_page == "🏠 Home"
     if home_active:
-        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_home"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
+        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_home"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
     if st.sidebar.button("🏠 Home", use_container_width=True, key="nav_home"):
         st.session_state.current_page = "🏠 Home"
     
@@ -330,21 +338,21 @@ def main():
     # Schema Mapping
     mapping_active = st.session_state.current_page == "📊 Schema Mapping"
     if mapping_active:
-        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_mapping"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
+        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_mapping"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
     if st.sidebar.button("📊 Schema Mapping", use_container_width=True, key="nav_mapping"):
         st.session_state.current_page = "📊 Schema Mapping"
     
     # WSDL to XSD
     wsdl_active = st.session_state.current_page == "🔧 WSDL to XSD"
     if wsdl_active:
-        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_wsdl"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
+        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_wsdl"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
     if st.sidebar.button("🔧 WSDL to XSD", use_container_width=True, key="nav_wsdl"):
         st.session_state.current_page = "🔧 WSDL to XSD"
     
     # Schema to Excel
     excel_active = st.session_state.current_page == "📋 Schema to Excel"
     if excel_active:
-        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_excel"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
+        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_excel"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
     if st.sidebar.button("📋 Schema to Excel", use_container_width=True, key="nav_excel"):
         st.session_state.current_page = "📋 Schema to Excel"
     
@@ -358,7 +366,7 @@ def main():
     # About
     about_active = st.session_state.current_page == "ℹ️ About"
     if about_active:
-        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_about"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
+        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_about"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
     if st.sidebar.button("ℹ️ About", use_container_width=True, key="nav_about"):
         st.session_state.current_page = "ℹ️ About"
     
