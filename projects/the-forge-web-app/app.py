@@ -744,17 +744,69 @@ def process_mapping(source_file, target_file, services, threshold, keep_case, re
                 temp_excel_path = temp_excel.name
             
             validate_excel_output(xsd_path, temp_excel_path)
-            for line in _log_messages:
-                if line.startswith("[SUCCESS]"):
-                    st.success(line)
-                elif line.startswith("[ERROR]"):
-                    st.error(line)
-                elif line.startswith("[WARNING]"):
-                    st.warning(line)
-                elif line.startswith("[VALIDATE]"):
-                    st.info(line)
-                else:
-                    st.info(line)
+            
+            # Improved validation display
+            if _log_messages:
+                # Group messages by type
+                success_messages = []
+                error_messages = []
+                warning_messages = []
+                info_messages = []
+                
+                for line in _log_messages:
+                    if line.startswith("[SUCCESS]"):
+                        success_messages.append(line)
+                    elif line.startswith("[ERROR]"):
+                        error_messages.append(line)
+                    elif line.startswith("[WARNING]"):
+                        warning_messages.append(line)
+                    elif line.startswith("[VALIDATE]"):
+                        info_messages.append(line)
+                    else:
+                        info_messages.append(line)
+                
+                # Display validation summary in a compact format
+                with st.expander("🔍 Validation Results", expanded=False):
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        if error_messages:
+                            st.error(f"❌ {len(error_messages)} Errors")
+                        else:
+                            st.success("✅ No Errors")
+                    
+                    with col2:
+                        if warning_messages:
+                            st.warning(f"⚠️ {len(warning_messages)} Warnings")
+                        else:
+                            st.success("✅ No Warnings")
+                    
+                    with col3:
+                        if success_messages:
+                            st.success(f"✅ {len(success_messages)} Success")
+                    
+                    with col4:
+                        if info_messages:
+                            st.info(f"ℹ️ {len(info_messages)} Info")
+                    
+                    # Show detailed messages only if there are issues
+                    if error_messages or warning_messages:
+                        st.markdown("---")
+                        if error_messages:
+                            st.markdown("**❌ Errors:**")
+                            for msg in error_messages[:5]:  # Limit to first 5 errors
+                                st.text(f"  • {msg.replace('[ERROR]', '').strip()}")
+                            if len(error_messages) > 5:
+                                st.text(f"  ... and {len(error_messages) - 5} more errors")
+                        
+                        if warning_messages:
+                            st.markdown("**⚠️ Warnings:**")
+                            for msg in warning_messages[:3]:  # Limit to first 3 warnings
+                                st.text(f"  • {msg.replace('[WARNING]', '').strip()}")
+                            if len(warning_messages) > 3:
+                                st.text(f"  ... and {len(warning_messages) - 3} more warnings")
+                    else:
+                        st.success("🎉 All validations passed successfully!")
             
             # Clean up temp validation file
             os.unlink(temp_excel_path)
