@@ -29,61 +29,75 @@ st.set_page_config(
 st.markdown("""
 <style>
     .main-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        background: #2d2d2d;
+        color: #ffffff;
         padding: 2rem;
-        border-radius: 15px;
+        border-radius: 8px;
         text-align: center;
         margin-bottom: 2rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border: 1px solid #444444;
     }
+    
+    .main-header h1 {
+        color: #ff6b35;
+        margin-bottom: 0.5rem;
+    }
+    
+    .main-header p {
+        color: #cccccc;
+    }
+    
     .section-header {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        color: white;
+        background: #2d2d2d;
+        color: #ffffff;
         padding: 1rem 1.5rem;
-        border-radius: 10px;
+        border-radius: 8px;
         margin: 1.5rem 0 1rem 0;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        border: 1px solid #444444;
+    }
+    
+    .section-header h2, .section-header h3 {
+        color: #ff6b35;
+        margin: 0;
     }
     .feature-card {
-        background: white;
+        background: #2d2d2d;
         padding: 1.5rem;
-        border-radius: 10px;
-        border: 1px solid #e0e0e0;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        border-radius: 8px;
+        border: 1px solid #444444;
         margin: 1rem 0;
-        color: #333333;
+        color: #ffffff;
     }
     .feature-card h3 {
-        color: #2c3e50;
+        color: #ff6b35;
         margin-bottom: 1rem;
         font-weight: 600;
     }
     .feature-card p {
-        color: #555555;
+        color: #cccccc;
         line-height: 1.6;
         margin-bottom: 1rem;
     }
     .feature-card ul {
-        color: #555555;
+        color: #cccccc;
         margin-left: 1rem;
     }
     .feature-card li {
-        color: #555555;
+        color: #cccccc;
         margin-bottom: 0.5rem;
     }
     .stButton > button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        background: #ff6b35;
+        color: #ffffff;
         border: none;
-        border-radius: 8px;
+        border-radius: 6px;
         padding: 12px 24px;
-        font-weight: 600;
-        transition: all 0.3s ease;
+        font-weight: 500;
+        transition: all 0.2s ease;
     }
     .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        background: #e55a2b;
+        transform: translateY(-1px);
     }
     .upload-area {
         border: 2px dashed #667eea;
@@ -94,167 +108,121 @@ st.markdown("""
         margin: 1rem 0;
     }
     .success-message {
-        background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-        color: white;
+        background: #2d2d2d;
+        color: #4CAF50;
         padding: 1rem;
-        border-radius: 8px;
+        border-radius: 6px;
         margin: 1rem 0;
+        border: 1px solid #4CAF50;
     }
     .error-message {
-        background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
-        color: white;
+        background: #2d2d2d;
+        color: #f44336;
         padding: 1rem;
-        border-radius: 8px;
+        border-radius: 6px;
         margin: 1rem 0;
+        border: 1px solid #f44336;
     }
     .warning-message {
-        background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
-        color: white;
+        background: #2d2d2d;
+        color: #ff9800;
         padding: 1rem;
-        border-radius: 8px;
+        border-radius: 6px;
         margin: 1rem 0;
+        border: 1px solid #ff9800;
     }
-    /* Professional Sidebar Styling */
+    /* Minimalist Forge-Themed Sidebar */
     .sidebar .sidebar-content {
-        background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
-        border-right: 1px solid #e9ecef;
-        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+        background: #1a1a1a;
+        border-right: 1px solid #333333;
+        color: #ffffff;
     }
     
     /* Sidebar Header */
     .sidebar-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        background: #2d2d2d;
+        color: #ffffff;
         padding: 1.5rem 1rem;
-        margin: -1rem -1rem 1rem -1rem;
-        border-radius: 0 0 15px 0;
+        margin: -1rem -1rem 1.5rem -1rem;
         text-align: center;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        border-bottom: 1px solid #444444;
     }
     
     .sidebar-header h2 {
         margin: 0;
-        font-size: 1.2rem;
-        font-weight: 700;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #ff6b35;
         letter-spacing: 0.5px;
     }
     
     .sidebar-header p {
-        margin: 0.5rem 0 0 0;
-        font-size: 0.9rem;
-        opacity: 0.9;
+        margin: 0.25rem 0 0 0;
+        font-size: 0.8rem;
+        color: #cccccc;
+        opacity: 0.8;
     }
     
     /* Navigation Sections */
-    .nav-section {
-        margin: 1.5rem 0;
-    }
-    
     .nav-section-title {
-        color: #495057;
-        font-weight: 700;
-        font-size: 0.85rem;
+        color: #ff6b35;
+        font-weight: 600;
+        font-size: 0.75rem;
         text-transform: uppercase;
         letter-spacing: 1px;
-        margin: 0 0 0.75rem 0;
-        padding: 0.5rem 0;
-        border-bottom: 2px solid #e9ecef;
-        position: relative;
-    }
-    
-    .nav-section-title::after {
-        content: '';
-        position: absolute;
-        bottom: -2px;
-        left: 0;
-        width: 30px;
-        height: 2px;
-        background: linear-gradient(90deg, #667eea, #764ba2);
-        border-radius: 1px;
+        margin: 1.5rem 0 0.75rem 0;
+        padding: 0.25rem 0;
+        border-bottom: 1px solid #444444;
     }
     
     /* Navigation Buttons */
     .sidebar .stButton > button {
-        background: #ffffff;
-        color: #495057;
-        border: 1px solid #e9ecef;
-        border-radius: 10px;
-        padding: 12px 16px;
-        font-weight: 500;
+        background: transparent;
+        color: #ffffff;
+        border: none;
+        border-radius: 6px;
+        padding: 0.75rem 1rem;
+        font-weight: 400;
         font-size: 0.9rem;
-        transition: all 0.3s ease;
-        margin: 0.25rem 0;
+        transition: all 0.2s ease;
+        margin: 0.125rem 0;
         width: 100%;
         text-align: left;
         position: relative;
-        overflow: hidden;
-    }
-    
-    .sidebar .stButton > button::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-        transition: left 0.5s;
     }
     
     .sidebar .stButton > button:hover {
-        transform: translateX(5px);
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-color: #667eea;
-    }
-    
-    .sidebar .stButton > button:hover::before {
-        left: 100%;
+        background: #333333;
+        color: #ff6b35;
+        transform: translateX(3px);
     }
     
     /* Active/Current Page Button */
     .sidebar .stButton > button[data-active="true"] {
-        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        color: white;
-        border-color: #28a745;
-        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
-        font-weight: 600;
-    }
-    
-    /* Home Button Special Styling */
-    .sidebar .stButton > button[data-type="home"] {
-        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
-        color: white;
-        border-color: #6c757d;
-        font-weight: 600;
-    }
-    
-    .sidebar .stButton > button[data-type="home"]:hover {
-        background: linear-gradient(135deg, #495057 0%, #343a40 100%);
-        border-color: #495057;
+        background: #ff6b35;
+        color: #ffffff;
+        font-weight: 500;
     }
     
     /* Divider Lines */
     .sidebar-divider {
         height: 1px;
-        background: linear-gradient(90deg, transparent, #e9ecef, transparent);
-        margin: 1.5rem 0;
+        background: #444444;
+        margin: 1rem 0;
         border: none;
     }
     
     /* Current Page Indicator */
     .current-page-indicator {
-        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        color: white;
-        padding: 0.75rem 1rem;
-        border-radius: 10px;
-        font-weight: 600;
+        background: #2d2d2d;
+        color: #ff6b35;
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        font-weight: 500;
         text-align: center;
         margin: 1rem 0;
-        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.2);
-        font-size: 0.85rem;
-        letter-spacing: 0.5px;
+        font-size: 0.8rem;
+        border: 1px solid #444444;
     }
     
     /* Footer Section */
@@ -262,35 +230,59 @@ st.markdown("""
         margin-top: auto;
         padding: 1rem 0;
         text-align: center;
-        color: #6c757d;
-        font-size: 0.8rem;
+        color: #888888;
+        font-size: 0.75rem;
+        border-top: 1px solid #444444;
     }
     
     .sidebar-footer .version {
-        background: #f8f9fa;
-        padding: 0.5rem;
-        border-radius: 6px;
+        background: #2d2d2d;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
         margin-top: 0.5rem;
         font-family: 'Courier New', monospace;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
+        color: #ff6b35;
+        border: 1px solid #444444;
     }
-    /* Improve text readability */
+    /* Dark Theme Styling */
     .main .block-container {
-        color: #333333;
+        background: #1a1a1a;
+        color: #ffffff;
     }
     .main .block-container p {
-        color: #555555;
+        color: #cccccc;
         line-height: 1.6;
     }
     .main .block-container h1, .main .block-container h2, .main .block-container h3 {
-        color: #2c3e50;
+        color: #ff6b35;
     }
     .main .block-container ul, .main .block-container ol {
-        color: #555555;
+        color: #cccccc;
     }
     .main .block-container li {
-        color: #555555;
+        color: #cccccc;
         margin-bottom: 0.5rem;
+    }
+    
+    /* Streamlit Widget Styling */
+    .stSelectbox, .stSlider, .stCheckbox {
+        background: #2d2d2d;
+        border: 1px solid #444444;
+        border-radius: 6px;
+    }
+    
+    .stFileUploader {
+        background: #2d2d2d;
+        border: 1px solid #444444;
+        border-radius: 6px;
+    }
+    
+    /* Code blocks */
+    .stCode {
+        background: #2d2d2d;
+        border: 1px solid #444444;
+        border-radius: 6px;
     }
 </style>
 """, unsafe_allow_html=True)
