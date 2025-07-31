@@ -94,7 +94,7 @@ class JSONSchemaParser:
         # Get JSON Schema type
         json_type = prop_def.get('type', 'string')
         
-        # Handle arrays
+        # Handle arrays - ONLY arrays should be processed here
         if json_type == 'array':
             rows.extend(self._parse_array_property(name, prop_def, path, root_schema, level, req_param, category))
         else:
