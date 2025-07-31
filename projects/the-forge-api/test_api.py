@@ -1,226 +1,261 @@
 #!/usr/bin/env python3
 """
 Test script for The Forge API
-Creates sample schema files and tests the API endpoints
+Tests all endpoints with sample files
 """
 
-import json
-import tempfile
 import requests
+import json
+import os
 from pathlib import Path
 
-# Sample JSON Schema
-SAMPLE_JSON_SCHEMA = {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "type": "object",
-    "properties": {
-        "user": {
-            "type": "object",
-            "properties": {
-                "id": {"type": "integer", "description": "User ID"},
-                "name": {"type": "string", "description": "User name"},
-                "email": {"type": "string", "description": "User email"},
-                "address": {
-                    "type": "object",
-                    "properties": {
-                        "street": {"type": "string"},
-                        "city": {"type": "string"},
-                        "zip": {"type": "string"}
-                    },
-                    "required": ["street", "city"]
-                }
-            },
-            "required": ["id", "name", "email"]
-        },
-        "orders": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "orderId": {"type": "string"},
-                    "amount": {"type": "number"},
-                    "items": {
-                        "type": "array",
-                        "items": {"type": "string"}
-                    }
-                }
-            }
-        }
-    },
-    "required": ["user"]
-}
+# API base URL
+BASE_URL = "http://localhost:8000"
 
-# Sample XSD Schema
-SAMPLE_XSD_SCHEMA = '''<?xml version="1.0" encoding="UTF-8"?>
+def test_health_check():
+    """Test health check endpoint"""
+    print("Testing health check...")
+    response = requests.get(f"{BASE_URL}/api/health")
+    print(f"Status: {response.status_code}")
+    print(f"Response: {response.json()}")
+    print()
+
+def test_schema_to_excel():
+    """Test schema to Excel conversion"""
+    print("Testing schema to Excel conversion...")
+    
+    # Create a simple XSD test file
+    test_xsd = '''<?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
-    <xs:element name="customer">
+    <xs:element name="Person">
         <xs:complexType>
             <xs:sequence>
-                <xs:element name="customerId" type="xs:integer"/>
-                <xs:element name="customerName" type="xs:string"/>
-                <xs:element name="customerEmail" type="xs:string"/>
-                <xs:element name="address" nillable="true">
-                    <xs:complexType>
-                        <xs:sequence>
-                            <xs:element name="street" type="xs:string"/>
-                            <xs:element name="city" type="xs:string"/>
-                            <xs:element name="zipCode" type="xs:string"/>
-                        </xs:sequence>
-                    </xs:complexType>
-                </xs:element>
-                <xs:element name="orders" nillable="true">
-                    <xs:complexType>
-                        <xs:sequence>
-                            <xs:element name="order" maxOccurs="unbounded">
-                                <xs:complexType>
-                                    <xs:sequence>
-                                        <xs:element name="orderId" type="xs:string"/>
-                                        <xs:element name="orderAmount" type="xs:decimal"/>
-                                        <xs:element name="orderItems" nillable="true">
-                                            <xs:complexType>
-                                                <xs:sequence>
-                                                    <xs:element name="item" type="xs:string" maxOccurs="unbounded"/>
-                                                </xs:sequence>
-                                            </xs:complexType>
-                                        </xs:element>
-                                    </xs:sequence>
-                                </xs:complexType>
-                            </xs:element>
-                        </xs:sequence>
-                    </xs:complexType>
-                </xs:element>
+                <xs:element name="Name" type="xs:string"/>
+                <xs:element name="Age" type="xs:integer"/>
+                <xs:element name="Email" type="xs:string"/>
+            </xs:sequence>
+            <xs:attribute name="id" type="xs:string"/>
+        </xs:complexType>
+    </xs:element>
+</xs:schema>'''
+    
+    # Save test file
+    test_file = "test_schema.xsd"
+    with open(test_file, "w") as f:
+        f.write(test_xsd)
+    
+    # Test the endpoint
+    with open(test_file, "rb") as f:
+        files = {"schema_file": ("test_schema.xsd", f, "application/xml")}
+        data = {"keep_case": False}
+        response = requests.post(f"{BASE_URL}/api/schema-to-excel", files=files, data=data)
+    
+    print(f"Status: {response.status_code}")
+    if response.status_code == 200:
+        # Save the response
+        with open("test_output.xlsx", "wb") as f:
+            f.write(response.content)
+        print("Excel file saved as test_output.xlsx")
+    else:
+        print(f"Error: {response.text}")
+    
+    # Clean up
+    os.remove(test_file)
+    print()
+
+def test_wsdl_to_xsd():
+    """Test WSDL to XSD extraction"""
+    print("Testing WSDL to XSD extraction...")
+    
+    # Create a simple WSDL test file
+    test_wsdl = '''<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                  targetNamespace="http://example.com/">
+    <wsdl:types>
+        <xsd:schema targetNamespace="http://example.com/">
+            <xsd:element name="GetPersonRequest">
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element name="id" type="xsd:string"/>
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+            <xsd:element name="GetPersonResponse">
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element name="name" type="xsd:string"/>
+                        <xsd:element name="age" type="xsd:integer"/>
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+        </xsd:schema>
+    </wsdl:types>
+    <wsdl:message name="GetPersonRequest">
+        <wsdl:part name="parameters" element="GetPersonRequest"/>
+    </wsdl:message>
+    <wsdl:message name="GetPersonResponse">
+        <wsdl:part name="parameters" element="GetPersonResponse"/>
+    </wsdl:message>
+    <wsdl:portType name="PersonService">
+        <wsdl:operation name="GetPerson">
+            <wsdl:input message="GetPersonRequest"/>
+            <wsdl:output message="GetPersonResponse"/>
+        </wsdl:operation>
+    </wsdl:portType>
+    <wsdl:binding name="PersonServiceBinding" type="PersonService">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="GetPerson">
+            <soap:operation soapAction=""/>
+            <wsdl:input><soap:body use="literal"/></wsdl:input>
+            <wsdl:output><soap:body use="literal"/></wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+    <wsdl:service name="PersonService">
+        <wsdl:port name="PersonServicePort" binding="PersonServiceBinding">
+            <soap:address location="http://example.com/PersonService"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>'''
+    
+    # Save test file
+    test_file = "test_service.wsdl"
+    with open(test_file, "w") as f:
+        f.write(test_wsdl)
+    
+    # Test the endpoint
+    with open(test_file, "rb") as f:
+        files = {"wsdl_file": ("test_service.wsdl", f, "application/xml")}
+        response = requests.post(f"{BASE_URL}/api/wsdl-to-xsd", files=files)
+    
+    print(f"Status: {response.status_code}")
+    if response.status_code == 200:
+        # Save the response
+        with open("test_wsdl_output.xsd", "wb") as f:
+            f.write(response.content)
+        print("XSD file saved as test_wsdl_output.xsd")
+    else:
+        print(f"Error: {response.text}")
+    
+    # Clean up
+    os.remove(test_file)
+    print()
+
+def test_mapping():
+    """Test field mapping between schemas"""
+    print("Testing field mapping...")
+    
+    # Create source JSON schema
+    source_schema = {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "age": {"type": "integer"},
+            "email": {"type": "string"}
+        }
+    }
+    
+    # Create target JSON schema
+    target_schema = {
+        "type": "object",
+        "properties": {
+            "fullName": {"type": "string"},
+            "userAge": {"type": "integer"},
+            "contactEmail": {"type": "string"}
+        }
+    }
+    
+    # Save test files
+    with open("source_schema.json", "w") as f:
+        json.dump(source_schema, f)
+    
+    with open("target_schema.json", "w") as f:
+        json.dump(target_schema, f)
+    
+    # Test the endpoint
+    with open("source_schema.json", "rb") as source_file, open("target_schema.json", "rb") as target_file:
+        files = {
+            "source_file": ("source_schema.json", source_file, "application/json"),
+            "target_file": ("target_schema.json", target_file, "application/json")
+        }
+        data = {"threshold": 0.7, "keep_case": False}
+        response = requests.post(f"{BASE_URL}/api/mapping", files=files, data=data)
+    
+    print(f"Status: {response.status_code}")
+    if response.status_code == 200:
+        # Save the response
+        with open("test_mapping_output.xlsx", "wb") as f:
+            f.write(response.content)
+        print("Mapping file saved as test_mapping_output.xlsx")
+    else:
+        print(f"Error: {response.text}")
+    
+    # Clean up
+    os.remove("source_schema.json")
+    os.remove("target_schema.json")
+    print()
+
+def test_xsd_to_jsonschema():
+    """Test XSD to JSON Schema conversion"""
+    print("Testing XSD to JSON Schema conversion...")
+    
+    # Create a simple XSD test file
+    test_xsd = '''<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+    <xs:element name="Person">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="Name" type="xs:string"/>
+                <xs:element name="Age" type="xs:integer"/>
+                <xs:element name="Email" type="xs:string"/>
             </xs:sequence>
         </xs:complexType>
     </xs:element>
 </xs:schema>'''
-
-def create_sample_files():
-    """Create sample schema files for testing"""
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-        json.dump(SAMPLE_JSON_SCHEMA, f, indent=2)
-        json_file = f.name
     
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.xsd', delete=False) as f:
-        f.write(SAMPLE_XSD_SCHEMA)
-        xsd_file = f.name
+    # Save test file
+    test_file = "test_xsd_to_json.xsd"
+    with open(test_file, "w") as f:
+        f.write(test_xsd)
     
-    return json_file, xsd_file
-
-def test_health_check(base_url):
-    """Test health check endpoint"""
-    print("Testing health check...")
-    try:
-        response = requests.get(f"{base_url}/api/health")
-        if response.status_code == 200:
-            print("✓ Health check passed")
-            print(f"  Response: {response.json()}")
-        else:
-            print(f"✗ Health check failed: {response.status_code}")
-    except Exception as e:
-        print(f"✗ Health check error: {e}")
-
-def test_schema_to_excel(base_url, json_file):
-    """Test schema to Excel conversion"""
-    print("\nTesting schema to Excel conversion...")
-    try:
-        with open(json_file, 'rb') as f:
-            files = {'schema_file': f}
-            response = requests.post(f"{base_url}/api/schema-to-excel", files=files)
-        
-        if response.status_code == 200:
-            print("✓ Schema to Excel conversion passed")
-            # Save the result
-            with open('test_schema.xlsx', 'wb') as f:
-                f.write(response.content)
-            print("  Saved as: test_schema.xlsx")
-        else:
-            print(f"✗ Schema to Excel conversion failed: {response.status_code}")
-            print(f"  Response: {response.text}")
-    except Exception as e:
-        print(f"✗ Schema to Excel conversion error: {e}")
-
-def test_xsd_to_jsonschema(base_url, xsd_file):
-    """Test XSD to JSON Schema conversion"""
-    print("\nTesting XSD to JSON Schema conversion...")
-    try:
-        with open(xsd_file, 'rb') as f:
-            files = {'xsd_file': f}
-            response = requests.post(f"{base_url}/api/xsd-to-jsonschema", files=files)
-        
-        if response.status_code == 200:
-            print("✓ XSD to JSON Schema conversion passed")
-            # Save the result
-            with open('test_converted.json', 'wb') as f:
-                f.write(response.content)
-            print("  Saved as: test_converted.json")
-        else:
-            print(f"✗ XSD to JSON Schema conversion failed: {response.status_code}")
-            print(f"  Response: {response.text}")
-    except Exception as e:
-        print(f"✗ XSD to JSON Schema conversion error: {e}")
-
-def test_mapping(base_url, json_file, xsd_file):
-    """Test schema mapping"""
-    print("\nTesting schema mapping...")
-    try:
-        with open(json_file, 'rb') as f1, open(xsd_file, 'rb') as f2:
-            files = {
-                'source_file': f1,
-                'target_file': f2
-            }
-            data = {
-                'threshold': '0.7',
-                'keep_case': 'false'
-            }
-            response = requests.post(f"{base_url}/api/mapping", files=files, data=data)
-        
-        if response.status_code == 200:
-            print("✓ Schema mapping passed")
-            # Save the result
-            with open('test_mapping.xlsx', 'wb') as f:
-                f.write(response.content)
-            print("  Saved as: test_mapping.xlsx")
-        else:
-            print(f"✗ Schema mapping failed: {response.status_code}")
-            print(f"  Response: {response.text}")
-    except Exception as e:
-        print(f"✗ Schema mapping error: {e}")
+    # Test the endpoint
+    with open(test_file, "rb") as f:
+        files = {"xsd_file": ("test_xsd_to_json.xsd", f, "application/xml")}
+        data = {"keep_case": False}
+        response = requests.post(f"{BASE_URL}/api/xsd-to-jsonschema", files=files, data=data)
+    
+    print(f"Status: {response.status_code}")
+    if response.status_code == 200:
+        # Save the response
+        with open("test_xsd_to_json_output.json", "wb") as f:
+            f.write(response.content)
+        print("JSON Schema file saved as test_xsd_to_json_output.json")
+    else:
+        print(f"Error: {response.text}")
+    
+    # Clean up
+    os.remove(test_file)
+    print()
 
 def main():
     """Run all tests"""
-    import sys
-    
-    if len(sys.argv) != 2:
-        print("Usage: python test_api.py <base_url>")
-        print("Example: python test_api.py http://localhost:8000")
-        sys.exit(1)
-    
-    base_url = sys.argv[1].rstrip('/')
-    
-    print(f"Testing The Forge API at: {base_url}")
+    print("Starting The Forge API tests...")
     print("=" * 50)
     
-    # Create sample files
-    json_file, xsd_file = create_sample_files()
-    
     try:
-        # Run tests
-        test_health_check(base_url)
-        test_schema_to_excel(base_url, json_file)
-        test_xsd_to_jsonschema(base_url, xsd_file)
-        test_mapping(base_url, json_file, xsd_file)
+        test_health_check()
+        test_schema_to_excel()
+        test_wsdl_to_xsd()
+        test_mapping()
+        test_xsd_to_jsonschema()
         
-        print("\n" + "=" * 50)
-        print("Test completed!")
-        print("Generated files:")
-        print("- test_schema.xlsx")
-        print("- test_converted.json")
-        print("- test_mapping.xlsx")
+        print("All tests completed!")
         
-    finally:
-        # Cleanup
-        Path(json_file).unlink(missing_ok=True)
-        Path(xsd_file).unlink(missing_ok=True)
+    except requests.exceptions.ConnectionError:
+        print("Error: Could not connect to the API. Make sure the server is running on localhost:8000")
+    except Exception as e:
+        print(f"Error during testing: {e}")
 
 if __name__ == "__main__":
     main() 

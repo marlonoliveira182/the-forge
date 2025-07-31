@@ -9,17 +9,12 @@ from typing import List, Optional
 import uvicorn
 from pathlib import Path
 
-# Import the core forge functionality
-from forge_core import (
-    extract_fields_from_json_schema,
-    extract_fields_from_xsd,
-    map_paths,
-    build_mapping_v2_style,
-    write_mapping_excel,
-    run_schema_to_excel_operation,
-    run_xsd_to_jsonschema_operation,
-    run_jsonschema_to_xsd_operation
-)
+# Import services
+from services.xsd_parser import XSDParser
+from services.json_schema_parser import JSONSchemaParser
+from services.excel_generator import ExcelGenerator
+from services.wsdl_extractor import WSDLExtractor
+from services.mapping_service import MappingService
 
 app = FastAPI(
     title="The Forge API",
@@ -40,6 +35,13 @@ app.add_middleware(
 TEMP_DIR = Path("temp")
 TEMP_DIR.mkdir(exist_ok=True)
 
+# Initialize services
+xsd_parser = XSDParser()
+json_parser = JSONSchemaParser()
+excel_generator = ExcelGenerator()
+wsdl_extractor = WSDLExtractor()
+mapping_service = MappingService()
+
 @app.get("/")
 async def root():
     """Root endpoint with API information"""
@@ -49,7 +51,8 @@ async def root():
             "POST /api/mapping": "Create field mapping between schemas",
             "POST /api/schema-to-excel": "Convert schema to Excel format",
             "POST /api/xsd-to-jsonschema": "Convert XSD to JSON Schema",
-            "POST /api/jsonschema-to-xsd": "Convert JSON Schema to XSD"
+            "POST /api/jsonschema-to-xsd": "Convert JSON Schema to XSD",
+            "POST /api/wsdl-to-xsd": "Extract XSD from WSDL"
         }
     }
 
@@ -78,47 +81,47 @@ async def create_mapping(
         source_ext = source_path.suffix.lower()
         target_ext = target_path.suffix.lower()
         
+        source_fields = []
+        target_fields = []
+        
+        # Parse source file
         if source_ext == '.json':
-            source_fields = extract_fields_from_json_schema(str(source_path))
+            source_fields = json_parser.parse_json_schema_file(str(source_path))
         elif source_ext in ['.xsd', '.xml']:
-            source_fields = extract_fields_from_xsd(str(source_path), keep_case)
+            source_fields = xsd_parser.parse_xsd_file(str(source_path))
         else:
             raise HTTPException(status_code=400, detail="Unsupported source file format")
         
+        # Parse target file
         if target_ext == '.json':
-            target_fields = extract_fields_from_json_schema(str(target_path))
+            target_fields = json_parser.parse_json_schema_file(str(target_path))
         elif target_ext in ['.xsd', '.xml']:
-            target_fields = extract_fields_from_xsd(str(target_path), keep_case)
+            target_fields = xsd_parser.parse_xsd_file(str(target_path))
         else:
             raise HTTPException(status_code=400, detail="Unsupported target file format")
         
         # Create mapping
-        mapping = map_paths(source_fields, target_fields, threshold)
+        mapping = mapping_service.create_field_mapping(source_fields, target_fields, threshold)
         
         # Generate output file
         output_dir = TEMP_DIR / "mapping_output"
         output_dir.mkdir(exist_ok=True)
+        output_path = output_dir / f"mapping_{source_path.stem}_to_{target_path.stem}.xlsx"
         
-        src_name = source_path.stem
-        tgt_name = target_path.stem
-        output_path = output_dir / f"mapping_{src_name}_to_{tgt_name}.xlsx"
+        excel_generator.create_mapping_excel(source_fields, target_fields, mapping, str(output_path))
         
-        build_mapping_v2_style(source_fields, target_fields, mapping, src_name, tgt_name, str(output_path))
+        # Clean up input files
+        source_path.unlink(missing_ok=True)
+        target_path.unlink(missing_ok=True)
         
-        # Return the mapping file
         return FileResponse(
             path=str(output_path),
-            filename=output_path.name,
+            filename=f"mapping_{source_file.filename.split('.')[0]}_to_{target_file.filename.split('.')[0]}.xlsx",
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        # Cleanup temporary files
-        for path in [source_path, target_path]:
-            if path.exists():
-                path.unlink()
+        raise HTTPException(status_code=500, detail=f"Error processing files: {str(e)}")
 
 @app.post("/api/schema-to-excel")
 async def schema_to_excel(
@@ -135,31 +138,39 @@ async def schema_to_excel(
         with open(schema_path, "wb") as buffer:
             shutil.copyfileobj(schema_file.file, buffer)
         
-        # Generate output
-        output_dir = TEMP_DIR / "schema_excel_output"
+        # Parse schema based on file type
+        schema_ext = schema_path.suffix.lower()
+        fields = []
+        
+        if schema_ext == '.json':
+            fields = json_parser.parse_json_schema_file(str(schema_path))
+        elif schema_ext in ['.xsd', '.xml']:
+            fields = xsd_parser.parse_xsd_file(str(schema_path))
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported schema file format")
+        
+        # Create data dictionary for Excel export (matching v8 format)
+        schema_name = schema_path.stem
+        data_dict = {schema_name: fields}
+        
+        # Generate Excel file
+        output_dir = TEMP_DIR / "excel_output"
         output_dir.mkdir(exist_ok=True)
+        output_path = output_dir / f"schema_{schema_path.stem}.xlsx"
         
-        run_schema_to_excel_operation(str(schema_path), str(output_dir))
+        excel_generator.export(data_dict, str(output_path))
         
-        # Find the generated Excel file
-        excel_files = list(output_dir.glob("*.xlsx"))
-        if not excel_files:
-            raise HTTPException(status_code=500, detail="Failed to generate Excel file")
-        
-        output_file = excel_files[0]
+        # Clean up input file
+        schema_path.unlink(missing_ok=True)
         
         return FileResponse(
-            path=str(output_file),
-            filename=output_file.name,
+            path=str(output_path),
+            filename=f"schema_{schema_file.filename.split('.')[0]}.xlsx",
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        # Cleanup temporary files
-        if schema_path.exists():
-            schema_path.unlink()
+        raise HTTPException(status_code=500, detail=f"Error processing schema: {str(e)}")
 
 @app.post("/api/xsd-to-jsonschema")
 async def xsd_to_jsonschema(
@@ -176,31 +187,39 @@ async def xsd_to_jsonschema(
         with open(xsd_path, "wb") as buffer:
             shutil.copyfileobj(xsd_file.file, buffer)
         
-        # Generate output
-        output_dir = TEMP_DIR / "xsd_to_json_output"
+        # Parse XSD
+        fields = xsd_parser.parse_xsd_file(str(xsd_path))
+        
+        # Convert to JSON Schema format
+        json_schema = {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {}
+        }
+        
+        # Convert fields to JSON Schema properties
+        for field in fields:
+            _add_field_to_json_schema(field, json_schema["properties"])
+        
+        # Generate output file
+        output_dir = TEMP_DIR / "jsonschema_output"
         output_dir.mkdir(exist_ok=True)
+        output_path = output_dir / f"schema_{xsd_path.stem}.json"
         
-        run_xsd_to_jsonschema_operation(str(xsd_path), str(output_dir))
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(json_schema, f, indent=2, ensure_ascii=False)
         
-        # Find the generated JSON Schema file
-        json_files = list(output_dir.glob("*.json"))
-        if not json_files:
-            raise HTTPException(status_code=500, detail="Failed to generate JSON Schema file")
-        
-        output_file = json_files[0]
+        # Clean up input file
+        xsd_path.unlink(missing_ok=True)
         
         return FileResponse(
-            path=str(output_file),
-            filename=output_file.name,
+            path=str(output_path),
+            filename=f"schema_{xsd_file.filename.split('.')[0]}.json",
             media_type="application/json"
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        # Cleanup temporary files
-        if xsd_path.exists():
-            xsd_path.unlink()
+        raise HTTPException(status_code=500, detail=f"Error converting XSD: {str(e)}")
 
 @app.post("/api/jsonschema-to-xsd")
 async def jsonschema_to_xsd(
@@ -216,36 +235,156 @@ async def jsonschema_to_xsd(
         with open(json_path, "wb") as buffer:
             shutil.copyfileobj(json_schema_file.file, buffer)
         
-        # Generate output
-        output_dir = TEMP_DIR / "json_to_xsd_output"
+        # Parse JSON Schema
+        fields = json_parser.parse_json_schema_file(str(json_path))
+        
+        # Convert to XSD format
+        xsd_content = _generate_xsd_from_fields(fields)
+        
+        # Generate output file
+        output_dir = TEMP_DIR / "xsd_output"
         output_dir.mkdir(exist_ok=True)
+        output_path = output_dir / f"schema_{json_path.stem}.xsd"
         
-        run_jsonschema_to_xsd_operation(str(json_path), str(output_dir))
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(xsd_content)
         
-        # Find the generated XSD file
-        xsd_files = list(output_dir.glob("*.xsd"))
-        if not xsd_files:
-            raise HTTPException(status_code=500, detail="Failed to generate XSD file")
-        
-        output_file = xsd_files[0]
+        # Clean up input file
+        json_path.unlink(missing_ok=True)
         
         return FileResponse(
-            path=str(output_file),
-            filename=output_file.name,
+            path=str(output_path),
+            filename=f"schema_{json_schema_file.filename.split('.')[0]}.xsd",
             media_type="application/xml"
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        # Cleanup temporary files
-        if json_path.exists():
-            json_path.unlink()
+        raise HTTPException(status_code=500, detail=f"Error converting JSON Schema: {str(e)}")
+
+@app.post("/api/wsdl-to-xsd")
+async def wsdl_to_xsd(
+    wsdl_file: UploadFile = File(...)
+):
+    """
+    Extract XSD from WSDL
+    """
+    try:
+        # Save uploaded file
+        wsdl_path = TEMP_DIR / f"wsdl_{wsdl_file.filename}"
+        
+        with open(wsdl_path, "wb") as buffer:
+            shutil.copyfileobj(wsdl_file.file, buffer)
+        
+        # Extract XSD from WSDL
+        xsd_content = wsdl_extractor.extract_xsd_from_wsdl_file(str(wsdl_path))
+        
+        if not xsd_content:
+            raise HTTPException(status_code=400, detail="No XSD schemas found in WSDL file")
+        
+        # Generate output file
+        output_dir = TEMP_DIR / "wsdl_output"
+        output_dir.mkdir(exist_ok=True)
+        output_path = output_dir / f"schema_{wsdl_path.stem}.xsd"
+        
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(xsd_content)
+        
+        # Clean up input file
+        wsdl_path.unlink(missing_ok=True)
+        
+        return FileResponse(
+            path=str(output_path),
+            filename=f"schema_{wsdl_file.filename.split('.')[0]}.xsd",
+            media_type="application/xml"
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error extracting XSD: {str(e)}")
 
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "healthy", "version": "1.0.0"}
+    return {
+        "status": "healthy",
+        "version": "1.0.0",
+        "services": {
+            "xsd_parser": "available",
+            "json_parser": "available",
+            "excel_generator": "available",
+            "wsdl_extractor": "available",
+            "mapping_service": "available"
+        }
+    }
+
+def _add_field_to_json_schema(field: dict, properties: dict):
+    """Helper method to add field to JSON Schema properties"""
+    # Extract field name from the first level
+    field_name = field.get('levels', [''])[0] if field.get('levels') else ''
+    field_type = field.get('Type', 'string')
+    
+    # Map XSD types to JSON Schema types
+    type_mapping = {
+        'string': 'string',
+        'integer': 'integer',
+        'int': 'integer',
+        'long': 'integer',
+        'double': 'number',
+        'float': 'number',
+        'decimal': 'number',
+        'boolean': 'boolean',
+        'date': 'string',
+        'datetime': 'string',
+        'array': 'array',
+        'object': 'object'
+    }
+    
+    json_type = type_mapping.get(field_type.lower(), 'string')
+    
+    if json_type == 'array':
+        properties[field_name] = {
+            "type": "array",
+            "items": {"type": "string"}  # Default to string items
+        }
+    else:
+        properties[field_name] = {
+            "type": json_type
+        }
+        
+        # Add description if available
+        if field.get('Description'):
+            properties[field_name]['description'] = field['Description']
+
+def _generate_xsd_from_fields(fields: List[dict]) -> str:
+    """Helper method to generate XSD from fields"""
+    xsd_template = '''<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+    <xs:element name="root">
+        <xs:complexType>
+            <xs:sequence>
+                {elements}
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+</xs:schema>'''
+    
+    elements = []
+    for field in fields:
+        field_name = field.get('levels', [''])[0] if field.get('levels') else ''
+        field_type = field.get('Type', 'string')
+        
+        # Map JSON Schema types to XSD types
+        type_mapping = {
+            'string': 'xs:string',
+            'integer': 'xs:integer',
+            'number': 'xs:decimal',
+            'boolean': 'xs:boolean',
+            'array': 'xs:string'  # Default for arrays
+        }
+        
+        xsd_type = type_mapping.get(field_type, 'xs:string')
+        elements.append(f'<xs:element name="{field_name}" type="{xsd_type}"/>')
+    
+    return xsd_template.format(elements='\n                '.join(elements))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 

@@ -8,6 +8,7 @@ A web API version of The Forge v8 application for schema transformation and mapp
 - **Schema to Excel**: Convert schemas to Excel format for analysis
 - **XSD to JSON Schema**: Convert XSD schemas to JSON Schema format
 - **JSON Schema to XSD**: Convert JSON Schema to XSD format
+- **WSDL to XSD**: Extract XSD schemas from WSDL files
 
 ## API Endpoints
 
@@ -51,6 +52,12 @@ https://your-render-app.onrender.com
   - `json_schema_file`: JSON Schema file
 - **Returns:** XSD file
 
+#### 6. WSDL to XSD
+- **POST** `/api/wsdl-to-xsd`
+- **Parameters:**
+  - `wsdl_file`: WSDL file
+- **Returns:** XSD file
+
 ## Usage Examples
 
 ### Using curl
@@ -79,6 +86,13 @@ curl -X POST "https://your-render-app.onrender.com/api/xsd-to-jsonschema" \
   --output schema.json
 ```
 
+#### WSDL to XSD
+```bash
+curl -X POST "https://your-render-app.onrender.com/api/wsdl-to-xsd" \
+  -F "wsdl_file=@service.wsdl" \
+  --output schema.xsd
+```
+
 ### Using JavaScript/Fetch
 
 ```javascript
@@ -95,6 +109,19 @@ const response = await fetch('https://your-render-app.onrender.com/api/mapping',
 
 const blob = await response.blob();
 // Handle the Excel file download
+```
+
+### Using Python requests
+
+```python
+import requests
+
+# Schema to Excel
+files = {'schema_file': open('schema.json', 'rb')}
+response = requests.post('https://your-render-app.onrender.com/api/schema-to-excel', files=files)
+
+with open('output.xlsx', 'wb') as f:
+    f.write(response.content)
 ```
 
 ## Deployment
@@ -116,15 +143,6 @@ const blob = await response.blob();
 3. **Deploy:**
    - Click "Create Web Service"
    - Render will automatically deploy your application
-
-### Compatibility Notes
-
-The API has been updated to use compatible versions of FastAPI and Pydantic:
-- **FastAPI:** 0.104.1 (updated from 0.88.0)
-- **Pydantic:** 2.5.0 (updated from 1.10.8)
-- **Uvicorn:** 0.24.0 (updated from 0.20.0)
-
-These updates resolve compatibility issues with Python 3.11+ and ensure proper deployment on Render.
 
 ### Docker Deployment
 
@@ -171,6 +189,7 @@ Once deployed, you can access the interactive API documentation at:
 ### Input Formats
 - **JSON Schema:** `.json` files following JSON Schema specification
 - **XSD:** `.xsd` and `.xml` files following XML Schema Definition
+- **WSDL:** `.wsdl` files containing web service definitions
 
 ### Output Formats
 - **Excel:** `.xlsx` files with formatted schema information
@@ -194,22 +213,15 @@ The free tier on Render may have rate limits. For production use, consider upgra
 - File uploads are validated for supported formats
 - Temporary files are cleaned up after processing
 
-## Troubleshooting
+## Architecture
 
-### Common Deployment Issues
+The API is built with a modular service architecture:
 
-1. **ForwardRef._evaluate() error:**
-   - This error occurs when using incompatible versions of FastAPI/Pydantic with Python 3.13+
-   - **Solution:** The requirements.txt has been updated with compatible versions
-   - **Test:** Run `python test_compatibility.py` to verify compatibility
-
-2. **Import errors:**
-   - Ensure all dependencies are installed: `pip install -r requirements.txt`
-   - Check Python version compatibility (3.11+ recommended)
-
-3. **Port binding issues:**
-   - Render uses the `$PORT` environment variable
-   - Local development uses port 8000 by default
+- **XSDParser**: Handles XSD schema parsing and field extraction
+- **JSONSchemaParser**: Handles JSON Schema parsing and field extraction
+- **ExcelGenerator**: Creates Excel files with schema information
+- **WSDLExtractor**: Extracts XSD schemas from WSDL files
+- **MappingService**: Handles field mapping and similarity calculations
 
 ## Contributing
 
