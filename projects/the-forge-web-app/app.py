@@ -316,7 +316,7 @@ def main():
     # Home Button
     home_active = st.session_state.current_page == "🏠 Home"
     if home_active:
-        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_home"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
+        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_home"] { background: #ff6b35 !important; font-weight: 500 !important; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
     if st.sidebar.button("🏠 Home", use_container_width=True, key="nav_home"):
         st.session_state.current_page = "🏠 Home"
     
@@ -328,21 +328,21 @@ def main():
     # Schema Mapping
     mapping_active = st.session_state.current_page == "📊 Schema Mapping"
     if mapping_active:
-        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_mapping"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
+        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_mapping"] { background: #ff6b35 !important; font-weight: 500 !important; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
     if st.sidebar.button("📊 Schema Mapping", use_container_width=True, key="nav_mapping"):
         st.session_state.current_page = "📊 Schema Mapping"
     
     # WSDL to XSD
     wsdl_active = st.session_state.current_page == "🔧 WSDL to XSD"
     if wsdl_active:
-        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_wsdl"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
+        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_wsdl"] { background: #ff6b35 !important; font-weight: 500 !important; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
     if st.sidebar.button("🔧 WSDL to XSD", use_container_width=True, key="nav_wsdl"):
         st.session_state.current_page = "🔧 WSDL to XSD"
     
     # Schema to Excel
     excel_active = st.session_state.current_page == "📋 Schema to Excel"
     if excel_active:
-        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_excel"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
+        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_excel"] { background: #ff6b35 !important; font-weight: 500 !important; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
     if st.sidebar.button("📋 Schema to Excel", use_container_width=True, key="nav_excel"):
         st.session_state.current_page = "📋 Schema to Excel"
     
@@ -354,7 +354,7 @@ def main():
     # About
     about_active = st.session_state.current_page == "ℹ️ About"
     if about_active:
-        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_about"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
+        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_about"] { background: #ff6b35 !important; font-weight: 500 !important; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
     if st.sidebar.button("ℹ️ About", use_container_width=True, key="nav_about"):
         st.session_state.current_page = "ℹ️ About"
     
