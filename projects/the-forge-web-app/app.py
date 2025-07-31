@@ -16,6 +16,7 @@ from services.wsdl_to_xsd_extractor import merge_xsd_from_wsdl
 from services.excel_mapping_service import ExcelMappingService
 from services.json_to_excel_service import JSONToExcelService
 from services.case_converter_service import pascal_to_camel, camel_to_pascal
+from services.schema_converter_service import SchemaConverterService
 
 # Page configuration
 st.set_page_config(
@@ -282,7 +283,8 @@ def get_services():
         'xsd_parser': XSDParser(),
         'excel_exporter': ExcelExporter(),
         'mapping_service': ExcelMappingService(),
-        'json_to_excel': JSONToExcelService()
+        'json_to_excel': JSONToExcelService(),
+        'schema_converter': SchemaConverterService()
     }
 
 def main():
@@ -345,6 +347,13 @@ def main():
     if st.sidebar.button("📋 Schema to Excel", use_container_width=True, key="nav_excel"):
         st.session_state.current_page = "📋 Schema to Excel"
     
+    # Schema Converter
+    converter_active = st.session_state.current_page == "🔄 Schema Converter"
+    if converter_active:
+        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_converter"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
+    if st.sidebar.button("🔄 Schema Converter", use_container_width=True, key="nav_converter"):
+        st.session_state.current_page = "🔄 Schema Converter"
+    
     st.sidebar.markdown('<hr class="sidebar-divider">', unsafe_allow_html=True)
     
     # Info Section
@@ -374,6 +383,8 @@ def main():
         show_wsdl_to_xsd_page(services)
     elif st.session_state.current_page == "📋 Schema to Excel":
         show_schema_to_excel_page(services)
+    elif st.session_state.current_page == "🔄 Schema Converter":
+        show_schema_converter_page(services)
     elif st.session_state.current_page == "ℹ️ About":
         show_about_page()
 
@@ -431,13 +442,12 @@ def show_home_page():
         
         st.markdown("""
         <div class="feature-card">
-            <h3>🚀 Key Features</h3>
+            <h3>🔄 Schema Converter</h3>
+            <p>Convert between XSD and JSON Schema formats seamlessly.</p>
             <ul>
-                <li>✅ No compilation issues</li>
-                <li>✅ Lightweight dependencies</li>
-                <li>✅ Cross-platform compatibility</li>
-                <li>✅ Production ready</li>
-                <li>✅ Modern web interface</li>
+                <li>XSD to JSON Schema</li>
+                <li>JSON Schema to XSD</li>
+                <li>Bidirectional conversion</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -449,6 +459,7 @@ def show_home_page():
     1. **Schema Mapping**: Upload source and target schema files, then generate mappings
     2. **WSDL to XSD**: Upload a WSDL file to extract embedded XSD schemas
     3. **Schema to Excel**: Upload any schema file to convert it to Excel format
+    4. **Schema Converter**: Convert between XSD and JSON Schema formats
     
     All tools support XSD, XML, JSON Schema, and WSDL file formats.
     """)
@@ -639,6 +650,107 @@ def show_schema_to_excel_page(services):
                         )
                     else:
                         st.markdown('<div class="error-message">❌ Failed to generate Excel file</div>', unsafe_allow_html=True)
+                except Exception as e:
+                    st.markdown(f'<div class="error-message">❌ Error: {str(e)}</div>', unsafe_allow_html=True)
+            
+        else:
+            st.markdown('<div class="warning-message">⚠️ Please upload a schema file</div>', unsafe_allow_html=True)
+
+def show_schema_converter_page(services):
+    st.markdown('<div class="section-header"><h2>🔄 Schema Converter</h2></div>', unsafe_allow_html=True)
+    
+    st.markdown("""
+    Convert schema files between XSD and JSON Schema formats. Upload your schema file and choose the target format.
+    """)
+    
+    # Conversion direction selection
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### 📤 Source Format")
+        source_format = st.selectbox(
+            "Select source format",
+            ["XSD", "JSON Schema"],
+            help="Choose the format of your input schema file"
+        )
+    
+    with col2:
+        st.markdown("### 📥 Target Format")
+        target_format = st.selectbox(
+            "Select target format",
+            ["JSON Schema", "XSD"],
+            index=0 if source_format == "XSD" else 1,
+            help="Choose the desired output format"
+        )
+    
+    # File upload
+    st.markdown("### 📁 Upload Schema File")
+    
+    if source_format == "XSD":
+        accepted_types = ['xsd', 'xml']
+        help_text = "Upload your XSD schema file"
+    else:
+        accepted_types = ['json']
+        help_text = "Upload your JSON Schema file"
+    
+    schema_file = st.file_uploader(
+        f"Upload {source_format} file",
+        type=accepted_types,
+        key="converter_schema",
+        help=help_text
+    )
+    
+    if schema_file:
+        st.markdown(f'<div class="success-message">✅ Uploaded: {schema_file.name}</div>', unsafe_allow_html=True)
+        
+        # Show file preview
+        content = schema_file.read()
+        schema_file.seek(0)  # Reset file pointer
+        with st.expander("📄 File Preview"):
+            try:
+                decoded_content = content.decode('utf-8')
+                preview = decoded_content[:1000] + "..." if len(decoded_content) > 1000 else decoded_content
+                language = "xml" if source_format == "XSD" else "json"
+                st.code(preview, language=language)
+            except UnicodeDecodeError:
+                st.code(content[:500], language="text")
+    
+    # Convert button
+    if st.button("🔄 Convert Schema", type="primary", use_container_width=True):
+        if schema_file:
+            with st.spinner(f"🔄 Converting {source_format} to {target_format}..."):
+                try:
+                    result = process_schema_conversion(schema_file, services, source_format, target_format)
+                    if result:
+                        st.markdown('<div class="success-message">✅ Schema converted successfully!</div>', unsafe_allow_html=True)
+                        
+                        # Determine file extension and MIME type
+                        if target_format == "JSON Schema":
+                            file_ext = "json"
+                            mime_type = "application/json"
+                        else:
+                            file_ext = "xsd"
+                            mime_type = "application/xml"
+                        
+                        st.download_button(
+                            label=f"📥 Download {target_format} File",
+                            data=result,
+                            file_name=f"converted_schema.{file_ext}",
+                            mime=mime_type,
+                            use_container_width=True
+                        )
+                        
+                        # Show preview of converted content
+                        with st.expander("📄 Converted Schema Preview"):
+                            try:
+                                decoded_result = result.decode('utf-8')
+                                preview = decoded_result[:1000] + "..." if len(decoded_result) > 1000 else decoded_result
+                                language = "json" if target_format == "JSON Schema" else "xml"
+                                st.code(preview, language=language)
+                            except UnicodeDecodeError:
+                                st.code(result[:500], language="text")
+                    else:
+                        st.markdown('<div class="error-message">❌ Failed to convert schema</div>', unsafe_allow_html=True)
                 except Exception as e:
                     st.markdown(f'<div class="error-message">❌ Error: {str(e)}</div>', unsafe_allow_html=True)
             
@@ -1100,6 +1212,39 @@ def process_schema_to_excel(schema_file, services):
         
     except Exception as e:
         st.error(f"Error in schema to Excel: {str(e)}")
+        return None
+
+def process_schema_conversion(schema_file, services, source_format, target_format):
+    try:
+        # Read file content
+        content = schema_file.read()
+        schema_content = content.decode('utf-8')
+        
+        # Get converter service
+        converter = services['schema_converter']
+        
+        # Perform conversion
+        if source_format == "XSD" and target_format == "JSON Schema":
+            # Convert XSD to JSON Schema
+            if not converter.validate_xsd_content(schema_content):
+                raise Exception("Invalid XSD content")
+            
+            result = converter.xsd_to_json_schema(schema_content)
+            return result.encode('utf-8')
+            
+        elif source_format == "JSON Schema" and target_format == "XSD":
+            # Convert JSON Schema to XSD
+            if not converter.validate_json_schema_content(schema_content):
+                raise Exception("Invalid JSON Schema content")
+            
+            result = converter.json_schema_to_xsd(schema_content)
+            return result.encode('utf-8')
+            
+        else:
+            raise Exception(f"Unsupported conversion: {source_format} to {target_format}")
+        
+    except Exception as e:
+        st.error(f"Error in schema conversion: {str(e)}")
         return None
 
 def parse_schema_file(file_path, xsd_parser):
