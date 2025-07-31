@@ -1,5 +1,7 @@
 streamlit==1.28.1
 openpyxl==3.1.2
 jsonschema==4.17.3
+pandas==2.0.3
+lxml==4.9.3
 # Using built-in xml.etree.ElementTree instead of lxml
 # Removed pandas to avoid compilation issues - not essential for core functionality 

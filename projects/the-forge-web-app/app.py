@@ -375,20 +375,23 @@ def show_mapping_page(services):
     
     # Settings
     st.markdown("### ⚙️ Settings")
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         threshold = st.slider("Similarity Threshold", 0.0, 1.0, 0.7, 0.1, 
                             help="Minimum similarity score for automatic field matching")
     with col2:
         keep_case = st.checkbox("Keep Original Case", value=False, 
                                help="Preserve original field names case")
+    with col3:
+        reorder_attributes = st.checkbox("Reorder Attributes First", value=False,
+                                       help="Reorder attributes to appear before elements in each parent structure")
     
     # Generate mapping button
     if st.button("🚀 Generate Mapping", type="primary", use_container_width=True):
         if source_file and target_file:
             with st.spinner("🔄 Generating mapping..."):
                 try:
-                    result = process_mapping(source_file, target_file, services, threshold, keep_case)
+                    result = process_mapping(source_file, target_file, services, threshold, keep_case, reorder_attributes)
                     if result:
                         st.markdown('<div class="success-message">✅ Mapping generated successfully!</div>', unsafe_allow_html=True)
                         st.download_button(
@@ -554,7 +557,7 @@ def show_about_page():
     Based on The Forge v8 Desktop Application
     """)
 
-def process_mapping(source_file, target_file, services, threshold, keep_case):
+def process_mapping(source_file, target_file, services, threshold, keep_case, reorder_attributes=False):
     """Process schema mapping using exact v8 logic"""
     try:
         # Create temporary files
@@ -716,6 +719,59 @@ def process_mapping(source_file, target_file, services, threshold, keep_case):
         # Save to buffer
         output_buffer = BytesIO()
         wb.save(output_buffer)
+        
+        # --- Post-processing QA: Excel Output Validator ---
+        xsd_path = source_temp_path if source_temp_path else target_temp_path
+        try:
+            from services.excel_output_validator import validate_excel_output, _log_messages
+            _log_messages.clear()
+            # Save to temporary file for validation
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_excel:
+                output_buffer.seek(0)
+                temp_excel.write(output_buffer.getvalue())
+                temp_excel_path = temp_excel.name
+            
+            validate_excel_output(xsd_path, temp_excel_path)
+            for line in _log_messages:
+                if line.startswith("[SUCCESS]"):
+                    st.success(line)
+                elif line.startswith("[ERROR]"):
+                    st.error(line)
+                elif line.startswith("[WARNING]"):
+                    st.warning(line)
+                elif line.startswith("[VALIDATE]"):
+                    st.info(line)
+                else:
+                    st.info(line)
+            
+            # Clean up temp validation file
+            os.unlink(temp_excel_path)
+        except Exception as e:
+            st.error(f"❌ Error in post-processing validator: {e}")
+        
+        # --- Attribute reordering if flag is set ---
+        if reorder_attributes:
+            try:
+                from services.reorder_excel_attributes import reorder_attributes_in_excel
+                # Save to temporary file for reordering
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_excel:
+                    output_buffer.seek(0)
+                    temp_excel.write(output_buffer.getvalue())
+                    temp_excel_path = temp_excel.name
+                
+                reorder_attributes_in_excel(temp_excel_path)
+                
+                # Read back the reordered file
+                with open(temp_excel_path, 'rb') as f:
+                    output_buffer.seek(0)
+                    output_buffer.write(f.read())
+                    output_buffer.truncate()
+                
+                # Clean up temp reordering file
+                os.unlink(temp_excel_path)
+                st.info("[INFO] Reordered attributes to appear first in each parent structure.")
+            except Exception as e:
+                st.error(f"[ERROR] Failed to reorder attributes: {e}")
         
         # Clean up temp files
         os.unlink(source_temp_path)
