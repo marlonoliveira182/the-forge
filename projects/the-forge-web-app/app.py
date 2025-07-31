@@ -378,6 +378,9 @@ def main():
         show_about_page()
 
 def show_home_page():
+    """
+    Display the home page with feature overview and quick start guide.
+    """
     st.markdown('<div class="section-header"><h2>🏠 Welcome to The Forge</h2></div>', unsafe_allow_html=True)
     
     st.markdown("""
@@ -643,6 +646,9 @@ def show_schema_to_excel_page(services):
             st.markdown('<div class="warning-message">⚠️ Please upload a schema file</div>', unsafe_allow_html=True)
 
 def show_about_page():
+    """
+    Display the about page with application information and features.
+    """
     st.markdown('<div class="section-header"><h2>ℹ️ About The Forge</h2></div>', unsafe_allow_html=True)
     
     st.markdown("""
@@ -693,7 +699,6 @@ def show_about_page():
     """)
 
 def process_mapping(source_file, target_file, services, threshold, source_case="Original", target_case="Original", reorder_attributes=False):
-    """Process schema mapping using exact v8 logic"""
     try:
         # Create temporary files
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{source_file.name.split('.')[-1]}") as source_temp:
@@ -990,7 +995,6 @@ def process_mapping(source_file, target_file, services, threshold, source_case="
         return None
 
 def process_wsdl_to_xsd(wsdl_file, services):
-    """Process WSDL to XSD extraction"""
     try:
         # Read WSDL content
         wsdl_content = wsdl_file.read().decode('utf-8')
@@ -1009,7 +1013,6 @@ def process_wsdl_to_xsd(wsdl_file, services):
         return None
 
 def process_schema_to_excel(schema_file, services):
-    """Process schema to Excel conversion"""
     try:
         # Create temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{schema_file.name.split('.')[-1]}") as temp_file:
@@ -1034,7 +1037,6 @@ def process_schema_to_excel(schema_file, services):
         return None
 
 def parse_schema_file(file_path, xsd_parser):
-    """Parse schema file based on its type"""
     if file_path.endswith('.json'):
         # Handle JSON Schema
         with open(file_path, 'r') as f:

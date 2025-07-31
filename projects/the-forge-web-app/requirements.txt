@@ -12,7 +12,4 @@ tenacity<9,>=8.1.0
 tornado<7,>=6.0.3
 tzlocal<6,>=1.1
 validators<1,>=0.2
-watchdog>=2.1.5
-# Using built-in xml.etree.ElementTree instead of lxml to avoid compilation issues
-# All core functionality works with built-in XML parsing
-# pandas is optional and wrapped in try-except blocks - removed to avoid compilation issues 
+watchdog>=2.1.5 

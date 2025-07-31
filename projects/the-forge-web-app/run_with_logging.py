@@ -1,38 +1,20 @@
-#!/usr/bin/env python3
-"""
-Script to run the Streamlit app with comprehensive logging enabled.
-This will help track down where the 'xml.etree.ElementTree.Element' object has no attribute 'error' error occurs.
-"""
-
-import os
-import sys
+# Run script with logging for The Forge Web App
 import subprocess
+import sys
+import logging
 
-def main():
-    print("Starting The Forge app with debug logging enabled...")
-    print("=" * 60)
-    print("Logs will appear in the console below.")
-    print("When you trigger the error, look for the detailed traceback.")
-    print("=" * 60)
-    
-    # Set environment variable to enable debug logging
-    env = os.environ.copy()
-    env['STREAMLIT_LOG_LEVEL'] = 'debug'
-    
-    # Run the Streamlit app
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+def run_app_with_logging():
     try:
-        subprocess.run([
-            sys.executable, "-m", "streamlit", "run", "app.py",
-            "--server.port", "8501",
-            "--server.address", "localhost"
-        ], env=env, check=True)
-    except KeyboardInterrupt:
-        print("\nApp stopped by user.")
+        logger.info("Starting The Forge Web App with logging...")
+        subprocess.run([sys.executable, "-m", "streamlit", "run", "app.py"], check=True)
     except subprocess.CalledProcessError as e:
-        print(f"Error running app: {e}")
-        return 1
-    
-    return 0
+        logger.error(f"Error running app: {e}")
+    except KeyboardInterrupt:
+        logger.info("App stopped by user")
 
 if __name__ == "__main__":
-    sys.exit(main()) 
+    run_app_with_logging() 
