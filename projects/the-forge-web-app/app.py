@@ -48,6 +48,25 @@ st.markdown("""
         border: 1px solid #e0e0e0;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         margin: 1rem 0;
+        color: #333333;
+    }
+    .feature-card h3 {
+        color: #2c3e50;
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+    .feature-card p {
+        color: #555555;
+        line-height: 1.6;
+        margin-bottom: 1rem;
+    }
+    .feature-card ul {
+        color: #555555;
+        margin-left: 1rem;
+    }
+    .feature-card li {
+        color: #555555;
+        margin-bottom: 0.5rem;
     }
     .stButton > button {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -94,6 +113,68 @@ st.markdown("""
     .sidebar .sidebar-content {
         background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
     }
+    .sidebar .stButton > button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        margin: 4px 0;
+        width: 100%;
+    }
+    .sidebar .stButton > button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    }
+    .sidebar .stButton > button[data-baseweb="button"] {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    }
+    .sidebar .stButton > button[data-baseweb="button"]:hover {
+        background: linear-gradient(135deg, #20c997 0%, #28a745 100%);
+    }
+    .sidebar h3 {
+        color: #495057;
+        font-weight: 600;
+        margin: 16px 0 8px 0;
+        padding-bottom: 4px;
+        border-bottom: 2px solid #e9ecef;
+    }
+    .sidebar hr {
+        border: none;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, #667eea, transparent);
+        margin: 16px 0;
+    }
+    .current-page-indicator {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-weight: 600;
+        text-align: center;
+        margin: 8px 0;
+    }
+    /* Improve text readability */
+    .main .block-container {
+        color: #333333;
+    }
+    .main .block-container p {
+        color: #555555;
+        line-height: 1.6;
+    }
+    .main .block-container h1, .main .block-container h2, .main .block-container h3 {
+        color: #2c3e50;
+    }
+    .main .block-container ul, .main .block-container ol {
+        color: #555555;
+    }
+    .main .block-container li {
+        color: #555555;
+        margin-bottom: 0.5rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -121,20 +202,46 @@ def main():
     
     # Sidebar navigation
     st.sidebar.markdown("## 🧭 Navigation")
-    page = st.sidebar.selectbox(
-        "Choose a tool:",
-        ["🏠 Home", "📊 Schema Mapping", "🔧 WSDL to XSD", "📋 Schema to Excel", "ℹ️ About"]
-    )
     
-    if page == "🏠 Home":
+    # Navigation buttons
+    if st.sidebar.button("🏠 Home", use_container_width=True, type="secondary"):
+        st.session_state.current_page = "🏠 Home"
+    
+    st.sidebar.markdown("### 🔧 Tools")
+    
+    if st.sidebar.button("📊 Schema Mapping", use_container_width=True):
+        st.session_state.current_page = "📊 Schema Mapping"
+    
+    if st.sidebar.button("🔧 WSDL to XSD", use_container_width=True):
+        st.session_state.current_page = "🔧 WSDL to XSD"
+    
+    if st.sidebar.button("📋 Schema to Excel", use_container_width=True):
+        st.session_state.current_page = "📋 Schema to Excel"
+    
+    st.sidebar.markdown("### ℹ️ Info")
+    
+    if st.sidebar.button("ℹ️ About", use_container_width=True):
+        st.session_state.current_page = "ℹ️ About"
+    
+    # Initialize session state if not exists
+    if 'current_page' not in st.session_state:
+        st.session_state.current_page = "🏠 Home"
+    
+    # Show current page indicator
+    st.sidebar.markdown("---")
+    st.sidebar.markdown(f'<div class="current-page-indicator">📍 {st.session_state.current_page}</div>', unsafe_allow_html=True)
+    st.sidebar.markdown("---")
+    
+    # Display current page
+    if st.session_state.current_page == "🏠 Home":
         show_home_page()
-    elif page == "📊 Schema Mapping":
+    elif st.session_state.current_page == "📊 Schema Mapping":
         show_mapping_page(services)
-    elif page == "🔧 WSDL to XSD":
+    elif st.session_state.current_page == "🔧 WSDL to XSD":
         show_wsdl_to_xsd_page(services)
-    elif page == "📋 Schema to Excel":
+    elif st.session_state.current_page == "📋 Schema to Excel":
         show_schema_to_excel_page(services)
-    elif page == "ℹ️ About":
+    elif st.session_state.current_page == "ℹ️ About":
         show_about_page()
 
 def show_home_page():
@@ -234,7 +341,12 @@ def show_mapping_page(services):
             content = source_file.read()
             source_file.seek(0)  # Reset file pointer
             with st.expander("📄 File Preview"):
-                st.code(content.decode('utf-8')[:1000] + "..." if len(content) > 1000 else content.decode('utf-8'), language="xml")
+                try:
+                    decoded_content = content.decode('utf-8')
+                    preview = decoded_content[:1000] + "..." if len(decoded_content) > 1000 else decoded_content
+                    st.code(preview, language="xml")
+                except UnicodeDecodeError:
+                    st.code(content[:500], language="text")
     
     with col2:
         st.markdown("### 📥 Target Schema")
@@ -251,7 +363,12 @@ def show_mapping_page(services):
             content = target_file.read()
             target_file.seek(0)  # Reset file pointer
             with st.expander("📄 File Preview"):
-                st.code(content.decode('utf-8')[:1000] + "..." if len(content) > 1000 else content.decode('utf-8'), language="xml")
+                try:
+                    decoded_content = content.decode('utf-8')
+                    preview = decoded_content[:1000] + "..." if len(decoded_content) > 1000 else decoded_content
+                    st.code(preview, language="xml")
+                except UnicodeDecodeError:
+                    st.code(content[:500], language="text")
     
     # Settings
     st.markdown("### ⚙️ Settings")
@@ -305,7 +422,12 @@ def show_wsdl_to_xsd_page(services):
         content = wsdl_file.read()
         wsdl_file.seek(0)  # Reset file pointer
         with st.expander("📄 WSDL Preview"):
-            st.code(content.decode('utf-8')[:1000] + "..." if len(content) > 1000 else content.decode('utf-8'), language="xml")
+            try:
+                decoded_content = content.decode('utf-8')
+                preview = decoded_content[:1000] + "..." if len(decoded_content) > 1000 else decoded_content
+                st.code(preview, language="xml")
+            except UnicodeDecodeError:
+                st.code(content[:500], language="text")
     
     if st.button("🔧 Extract XSD", type="primary", use_container_width=True):
         if wsdl_file:
@@ -348,7 +470,12 @@ def show_schema_to_excel_page(services):
         content = schema_file.read()
         schema_file.seek(0)  # Reset file pointer
         with st.expander("📄 File Preview"):
-            st.code(content.decode('utf-8')[:1000] + "..." if len(content) > 1000 else content.decode('utf-8'), language="xml")
+            try:
+                decoded_content = content.decode('utf-8')
+                preview = decoded_content[:1000] + "..." if len(decoded_content) > 1000 else decoded_content
+                st.code(preview, language="xml")
+            except UnicodeDecodeError:
+                st.code(content[:500], language="text")
     
     keep_case = st.checkbox("Keep Original Case", value=False, key="schema_case",
                            help="Preserve original field names case")
@@ -429,11 +556,11 @@ def process_mapping(source_file, target_file, services, threshold, keep_case):
     try:
         # Create temporary files
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{source_file.name.split('.')[-1]}") as source_temp:
-            source_file.save(source_temp.name)
+            source_temp.write(source_file.read())
             source_temp_path = source_temp.name
         
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{target_file.name.split('.')[-1]}") as target_temp:
-            target_file.save(target_temp.name)
+            target_temp.write(target_file.read())
             target_temp_path = target_temp.name
         
         # Parse schemas
@@ -482,7 +609,7 @@ def process_schema_to_excel(schema_file, services, keep_case):
     try:
         # Create temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{schema_file.name.split('.')[-1]}") as temp_file:
-            schema_file.save(temp_file.name)
+            temp_file.write(schema_file.read())
             temp_path = temp_file.name
         
         # Parse schema
