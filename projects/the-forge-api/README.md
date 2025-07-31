@@ -111,10 +111,20 @@ const blob = await response.blob();
    - **Environment:** `Python`
    - **Build Command:** `pip install -r requirements.txt`
    - **Start Command:** `uvicorn main:app --host 0.0.0.0 --port $PORT`
+   - **Python Version:** 3.11.18 (specified in render.yaml)
 
 3. **Deploy:**
    - Click "Create Web Service"
    - Render will automatically deploy your application
+
+### Compatibility Notes
+
+The API has been updated to use compatible versions of FastAPI and Pydantic:
+- **FastAPI:** 0.104.1 (updated from 0.88.0)
+- **Pydantic:** 2.5.0 (updated from 1.10.8)
+- **Uvicorn:** 0.24.0 (updated from 0.20.0)
+
+These updates resolve compatibility issues with Python 3.11+ and ensure proper deployment on Render.
 
 ### Docker Deployment
 
@@ -183,6 +193,23 @@ The free tier on Render may have rate limits. For production use, consider upgra
 - CORS is enabled for all origins (configure as needed for production)
 - File uploads are validated for supported formats
 - Temporary files are cleaned up after processing
+
+## Troubleshooting
+
+### Common Deployment Issues
+
+1. **ForwardRef._evaluate() error:**
+   - This error occurs when using incompatible versions of FastAPI/Pydantic with Python 3.13+
+   - **Solution:** The requirements.txt has been updated with compatible versions
+   - **Test:** Run `python test_compatibility.py` to verify compatibility
+
+2. **Import errors:**
+   - Ensure all dependencies are installed: `pip install -r requirements.txt`
+   - Check Python version compatibility (3.11+ recommended)
+
+3. **Port binding issues:**
+   - Render uses the `$PORT` environment variable
+   - Local development uses port 8000 by default
 
 ## Contributing
 
