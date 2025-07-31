@@ -5,7 +5,7 @@ except ImportError:
     PANDAS_AVAILABLE = False
     pd = None
 
-from lxml import etree
+import xml.etree.ElementTree as ET
 import os
 import sys
 sys.path.append(os.path.dirname(__file__))
