@@ -10,7 +10,6 @@ import difflib
 from openpyxl.utils import get_column_letter
 
 # Import modern UI libraries
-from streamlit_option_menu import option_menu
 from streamlit_extras.card import card
 from streamlit_extras.let_it_rain import rain
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode
@@ -30,7 +29,7 @@ st.set_page_config(
     page_title="The Forge - Schema Transformation Tool",
     page_icon="🔨",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
     menu_items={
         'Get Help': 'https://github.com/your-repo/the-forge',
         'Report a bug': 'https://github.com/your-repo/the-forge/issues',
@@ -206,92 +205,40 @@ st.markdown("""
         border: 1px solid var(--warning-color);
         box-shadow: 0 4px 16px rgba(255, 193, 7, 0.2);
     }
-    /* Modern Sidebar */
-    .sidebar .sidebar-content {
-        background: linear-gradient(180deg, #1a1a1a 0%, #2d2d2d 100%);
-        border-right: 1px solid var(--border-color);
-        color: var(--text-primary);
-    }
     
-    /* Modern Sidebar Header */
-    .sidebar-header {
+    /* Modern Tab Styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
         background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%);
-        color: var(--text-primary);
-        padding: 2rem 1.5rem;
-        margin: -1rem -1rem 2rem -1rem;
-        text-align: center;
-        border-bottom: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 8px;
+        border: 1px solid var(--border-color);
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-        backdrop-filter: blur(10px);
     }
     
-    .sidebar-header h2 {
-        margin: 0;
-        font-size: 1.4rem;
-        font-weight: 700;
-        color: var(--primary-color);
-        letter-spacing: 0.5px;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    }
-    
-    /* Modern Navigation Buttons */
-    .sidebar .stButton > button {
+    .stTabs [data-baseweb="tab"] {
         background: transparent;
-        color: var(--text-primary);
-        border: none;
+        color: var(--text-secondary);
         border-radius: 8px;
-        padding: 1rem 1.25rem;
+        padding: 12px 24px;
         font-weight: 500;
-        font-size: 0.95rem;
         transition: all 0.3s ease;
-        margin: 0.25rem 0;
-        width: 100%;
-        text-align: left;
-        position: relative;
-        backdrop-filter: blur(5px);
+        border: none;
     }
     
-    .sidebar .stButton > button:hover {
+    .stTabs [data-baseweb="tab"]:hover {
         background: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(255, 107, 53, 0.2) 100%);
-        transform: translateX(4px);
-        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.2);
+        color: var(--text-primary);
+        transform: translateY(-2px);
     }
     
-    /* Active/Current Page Button */
-    .sidebar .stButton > button[data-active="true"] {
+    .stTabs [aria-selected="true"] {
         background: linear-gradient(135deg, var(--primary-color) 0%, #ff8c42 100%);
         color: var(--text-primary);
         font-weight: 600;
         box-shadow: 0 4px 16px rgba(255, 107, 53, 0.4);
-        transform: translateX(2px);
     }
-    
 
-    
-    /* Modern Footer Section */
-    .sidebar-footer {
-        margin-top: auto;
-        padding: 1.5rem 1rem;
-        text-align: center;
-        color: var(--text-secondary);
-        font-size: 0.8rem;
-        border-top: 1px solid var(--border-color);
-        background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%);
-        margin: 2rem -1rem -1rem -1rem;
-        backdrop-filter: blur(10px);
-    }
-    
-    .sidebar-footer .version {
-        background: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(255, 107, 53, 0.2) 100%);
-        padding: 0.5rem 1rem;
-        border-radius: 8px;
-        margin-top: 0.75rem;
-        font-family: 'Courier New', monospace;
-        font-size: 0.75rem;
-        color: var(--primary-color);
-        border: 1px solid var(--primary-color);
-        box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
-    }
     /* Modern Dark Theme Styling */
     .main .block-container {
         background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
@@ -382,74 +329,23 @@ def main():
     # Get services
     services = get_services()
     
-    # Modern Sidebar Navigation
-    st.sidebar.markdown("""
-        <div class="sidebar-header">
-            <h2>🔨 The Forge</h2>
-        </div>
-    """, unsafe_allow_html=True)
-    
     # Initialize session state if not exists
     if 'current_page' not in st.session_state:
-        st.session_state.current_page = "🏠 Home"
+        st.session_state.current_page = "Home"
     
-    # Modern Navigation Menu
-    selected = option_menu(
-        menu_title=None,
-        options=["🏠 Home", "📊 Schema Mapping", "🔧 WSDL to XSD", "📋 Schema to Excel", "ℹ️ About"],
-        icons=["house", "diagram-3", "gear", "file-earmark-spreadsheet", "info-circle"],
-        menu_icon="cast",
-        default_index=0,
-        orientation="vertical",
-        styles={
-            "container": {"padding": "0!important", "background-color": "transparent"},
-            "icon": {"color": "#ff6b35", "font-size": "1.2rem"},
-            "nav-link": {
-                "color": "#ffffff",
-                "font-size": "0.95rem",
-                "text-align": "left",
-                "margin": "0.25rem 0",
-                "border-radius": "8px",
-                "padding": "1rem 1.25rem",
-                "background-color": "transparent",
-                "transition": "all 0.3s ease"
-            },
-            "nav-link:hover": {
-                "background-color": "rgba(255, 107, 53, 0.1)",
-                "color": "#ffffff",
-                "transform": "translateX(4px)"
-            },
-            "nav-link-selected": {
-                "background-color": "linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%)",
-                "color": "#ffffff",
-                "font-weight": "600",
-                "box-shadow": "0 4px 16px rgba(255, 107, 53, 0.4)"
-            }
-        }
-    )
+    # Tab Navigation Menu
+    selected = st.tabs(["Home", "Schema Mapping", "WSDL to XSD", "Schema to Excel", "About"])
     
-    # Update session state
-    st.session_state.current_page = selected
-    
-    # Footer
-    st.sidebar.markdown("""
-        <div class="sidebar-footer">
-            <div>Built with Streamlit</div>
-            <div class="version">v1.0.0</div>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    # Display current page
-    if st.session_state.current_page == "🏠 Home":
+    # Display current page based on tab selection
+    if selected[0]:
         show_home_page()
-    elif st.session_state.current_page == "📊 Schema Mapping":
+    elif selected[1]:
         show_mapping_page(services)
-    elif st.session_state.current_page == "🔧 WSDL to XSD":
+    elif selected[2]:
         show_wsdl_to_xsd_page(services)
-    elif st.session_state.current_page == "📋 Schema to Excel":
+    elif selected[3]:
         show_schema_to_excel_page(services)
-
-    elif st.session_state.current_page == "ℹ️ About":
+    elif selected[4]:
         show_about_page()
 
 def show_home_page():
