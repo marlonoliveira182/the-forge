@@ -771,40 +771,40 @@ def process_mapping(source_file, target_file, services, threshold, keep_case, re
                     
                     with col1:
                         if error_messages:
-                            st.error(f"❌ {len(error_messages)} Errors")
+                            st.error(f"❌ {len(error_messages)} Field Errors")
                         else:
-                            st.success("✅ No Errors")
+                            st.success("✅ No Field Errors")
                     
                     with col2:
                         if warning_messages:
-                            st.warning(f"⚠️ {len(warning_messages)} Warnings")
+                            st.warning(f"⚠️ {len(warning_messages)} Field Warnings")
                         else:
-                            st.success("✅ No Warnings")
+                            st.success("✅ No Field Warnings")
                     
                     with col3:
                         if success_messages:
-                            st.success(f"✅ {len(success_messages)} Success")
+                            st.success(f"✅ {len(success_messages)} Fields Validated")
                     
                     with col4:
                         if info_messages:
-                            st.info(f"ℹ️ {len(info_messages)} Info")
+                            st.info(f"ℹ️ {len(info_messages)} Validation Steps")
                     
                     # Show detailed messages only if there are issues
                     if error_messages or warning_messages:
                         st.markdown("---")
                         if error_messages:
-                            st.markdown("**❌ Errors:**")
+                            st.markdown("**❌ Field Errors:**")
                             for msg in error_messages[:5]:  # Limit to first 5 errors
                                 st.text(f"  • {msg.replace('[ERROR]', '').strip()}")
                             if len(error_messages) > 5:
-                                st.text(f"  ... and {len(error_messages) - 5} more errors")
+                                st.text(f"  ... and {len(error_messages) - 5} more field errors")
                         
                         if warning_messages:
-                            st.markdown("**⚠️ Warnings:**")
+                            st.markdown("**⚠️ Field Warnings:**")
                             for msg in warning_messages[:3]:  # Limit to first 3 warnings
                                 st.text(f"  • {msg.replace('[WARNING]', '').strip()}")
                             if len(warning_messages) > 3:
-                                st.text(f"  ... and {len(warning_messages) - 3} more warnings")
+                                st.text(f"  ... and {len(warning_messages) - 3} more field warnings")
                     else:
                         st.success("🎉 All validations passed successfully!")
             
