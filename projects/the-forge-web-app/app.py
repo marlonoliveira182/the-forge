@@ -680,11 +680,11 @@ def process_mapping(source_file, target_file, services, threshold, keep_case, re
         tree = ET.parse(source_temp_path)
         root = tree.getroot()
         simple_types = {}
-        for st in root.findall(f'.//{{http://www.w3.org/2001/XMLSchema}}simpleType'):
-            name = st.get('name')
+        for simple_type in root.findall(f'.//{{http://www.w3.org/2001/XMLSchema}}simpleType'):
+            name = simple_type.get('name')
             if not name:
                 continue
-            restriction = st.find('{http://www.w3.org/2001/XMLSchema}restriction')
+            restriction = simple_type.find('{http://www.w3.org/2001/XMLSchema}restriction')
             base = restriction.get('base') if restriction is not None else None
             restrictions = {}
             if restriction is not None:
@@ -709,11 +709,11 @@ def process_mapping(source_file, target_file, services, threshold, keep_case, re
             tgt_tree = ET.parse(target_temp_path)
             tgt_root = tgt_tree.getroot()
             tgt_simple_types = {}
-            for st in tgt_root.findall(f'.//{{http://www.w3.org/2001/XMLSchema}}simpleType'):
-                name = st.get('name')
+            for simple_type in tgt_root.findall(f'.//{{http://www.w3.org/2001/XMLSchema}}simpleType'):
+                name = simple_type.get('name')
                 if not name:
                     continue
-                restriction = st.find('{http://www.w3.org/2001/XMLSchema}restriction')
+                restriction = simple_type.find('{http://www.w3.org/2001/XMLSchema}restriction')
                 base = restriction.get('base') if restriction is not None else None
                 restrictions = {}
                 if restriction is not None:
