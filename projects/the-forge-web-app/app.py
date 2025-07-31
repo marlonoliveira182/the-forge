@@ -20,7 +20,7 @@ from services.case_converter_service import pascal_to_camel, camel_to_pascal
 # Page configuration
 st.set_page_config(
     page_title="The Forge - Schema Transformation Tool",
-    page_icon="assets/anvil.ico",
+    page_icon="anvil.ico",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -193,7 +193,6 @@ st.markdown("""
     
     .sidebar .stButton > button:hover {
         background: #333333;
-        color: #ff6b35;
         transform: translateX(3px);
     }
     
