@@ -1,6 +1,6 @@
 import json
 import openpyxl
-from excel_mapping_service import ExcelMappingService
+from .excel_mapping_service import ExcelMappingService
 
 class JSONToExcelService:
     def __init__(self, max_level=8):

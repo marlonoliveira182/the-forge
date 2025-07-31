@@ -8,8 +8,7 @@ except ImportError:
 from lxml import etree
 import os
 import sys
-sys.path.append(os.path.dirname(__file__))
-from xsd_parser_service import XSDParser
+from .xsd_parser_service import XSDParser
 
 # This function will be replaced by the UI's log function at runtime
 # For now, it just collects logs in a list for possible export
