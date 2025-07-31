@@ -144,8 +144,8 @@ st.markdown("""
     .sidebar-header {
         background: #2d2d2d;
         color: #ffffff;
-        padding: 2rem 1.5rem;
-        margin: -1rem -1rem 2rem -1rem;
+        padding: 1.5rem 1rem;
+        margin: -1rem -1rem 1.5rem -1rem;
         text-align: center;
         border-bottom: 1px solid #444444;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -153,52 +153,31 @@ st.markdown("""
     
     .sidebar-header h2 {
         margin: 0;
-        font-size: 1.1rem;
+        font-size: 1.2rem;
         font-weight: 600;
         color: #ff6b35;
         letter-spacing: 0.5px;
     }
     
-    .sidebar-header p {
-        margin: 0.25rem 0 0 0;
-        font-size: 0.8rem;
-        color: #cccccc;
-        opacity: 0.8;
-    }
-    
-    /* Navigation Sections */
-    .nav-section-title {
-        color: #ff6b35;
-        font-weight: 600;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        margin: 2rem 0 1rem 0;
-        padding: 0.5rem 0;
-        border-bottom: 1px solid #444444;
-    }
-    
-    /* Navigation Buttons */
+    /* Navigation Buttons - Minimalist */
     .sidebar .stButton > button {
         background: transparent;
         color: #ffffff;
         border: none;
-        border-radius: 8px;
-        padding: 1rem 1.25rem;
+        border-radius: 6px;
+        padding: 0.875rem 1rem;
         font-weight: 400;
         font-size: 0.9rem;
-        transition: all 0.3s ease;
-        margin: 0.25rem 0;
+        transition: all 0.2s ease;
+        margin: 0.125rem 0;
         width: 100%;
         text-align: left;
         position: relative;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
     
     .sidebar .stButton > button:hover {
         background: #333333;
-        transform: translateX(4px);
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        transform: translateX(2px);
     }
     
     /* Active/Current Page Button */
@@ -206,16 +185,7 @@ st.markdown("""
         background: #ff6b35;
         color: #ffffff;
         font-weight: 500;
-        box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
-    }
-    
-    /* Divider Lines */
-    .sidebar-divider {
-        height: 1px;
-        background: #444444;
-        margin: 1.5rem 0;
-        border: none;
-        opacity: 0.6;
+        box-shadow: 0 1px 4px rgba(255, 107, 53, 0.3);
     }
     
 
@@ -223,14 +193,14 @@ st.markdown("""
     /* Footer Section */
     .sidebar-footer {
         margin-top: auto;
-        padding: 1.5rem 0;
+        padding: 1rem 0;
         text-align: center;
         color: #888888;
         font-size: 0.75rem;
         border-top: 1px solid #444444;
         background: #2d2d2d;
-        margin: 2rem -1rem -1rem -1rem;
-        padding: 1.5rem 1rem;
+        margin: 1.5rem -1rem -1rem -1rem;
+        padding: 1rem;
     }
     
     .sidebar-footer .version {
@@ -308,11 +278,10 @@ def main():
     # Get services
     services = get_services()
     
-    # Professional Sidebar Navigation
+    # Minimalist Sidebar Navigation
     st.sidebar.markdown("""
         <div class="sidebar-header">
             <h2>🔨 The Forge</h2>
-            <p>Schema Transformation Tool</p>
         </div>
     """, unsafe_allow_html=True)
     
@@ -320,55 +289,22 @@ def main():
     if 'current_page' not in st.session_state:
         st.session_state.current_page = "🏠 Home"
     
-    # Navigation Sections
-    st.sidebar.markdown('<div class="nav-section-title">🏠 Navigation</div>', unsafe_allow_html=True)
+    # Navigation Buttons - Minimalist Layout
+    nav_buttons = [
+        ("🏠 Home", "nav_home"),
+        ("📊 Schema Mapping", "nav_mapping"),
+        ("🔧 WSDL to XSD", "nav_wsdl"),
+        ("📋 Schema to Excel", "nav_excel"),
+        ("ℹ️ About", "nav_about")
+    ]
     
-    # Home Button
-    home_active = st.session_state.current_page == "🏠 Home"
-    if home_active:
-        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_home"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
-    if st.sidebar.button("🏠 Home", use_container_width=True, key="nav_home"):
-        st.session_state.current_page = "🏠 Home"
-    
-    st.sidebar.markdown('<hr class="sidebar-divider">', unsafe_allow_html=True)
-    
-    # Tools Section
-    st.sidebar.markdown('<div class="nav-section-title">🔧 Tools</div>', unsafe_allow_html=True)
-    
-    # Schema Mapping
-    mapping_active = st.session_state.current_page == "📊 Schema Mapping"
-    if mapping_active:
-        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_mapping"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
-    if st.sidebar.button("📊 Schema Mapping", use_container_width=True, key="nav_mapping"):
-        st.session_state.current_page = "📊 Schema Mapping"
-    
-    # WSDL to XSD
-    wsdl_active = st.session_state.current_page == "🔧 WSDL to XSD"
-    if wsdl_active:
-        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_wsdl"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
-    if st.sidebar.button("🔧 WSDL to XSD", use_container_width=True, key="nav_wsdl"):
-        st.session_state.current_page = "🔧 WSDL to XSD"
-    
-    # Schema to Excel
-    excel_active = st.session_state.current_page == "📋 Schema to Excel"
-    if excel_active:
-        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_excel"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
-    if st.sidebar.button("📋 Schema to Excel", use_container_width=True, key="nav_excel"):
-        st.session_state.current_page = "📋 Schema to Excel"
-    
-
-    
-    st.sidebar.markdown('<hr class="sidebar-divider">', unsafe_allow_html=True)
-    
-    # Info Section
-    st.sidebar.markdown('<div class="nav-section-title">ℹ️ Information</div>', unsafe_allow_html=True)
-    
-    # About
-    about_active = st.session_state.current_page == "ℹ️ About"
-    if about_active:
-        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_about"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
-    if st.sidebar.button("ℹ️ About", use_container_width=True, key="nav_about"):
-        st.session_state.current_page = "ℹ️ About"
+    for button_text, button_key in nav_buttons:
+        is_active = st.session_state.current_page == button_text
+        if is_active:
+            st.sidebar.markdown(f'<style>.sidebar .stButton > button[key="{button_key}"] {{ background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3) !important; }}</style>', unsafe_allow_html=True)
+        
+        if st.sidebar.button(button_text, use_container_width=True, key=button_key):
+            st.session_state.current_page = button_text
     
     # Footer
     st.sidebar.markdown("""
