@@ -516,7 +516,7 @@ def show_mapping_page(services):
         target_case = st.selectbox("Target Case", ["Original", "PascalCase", "camelCase"], 
                                   help="Convert target field names to specified case")
     with col3:
-        min_match_threshold = st.slider("Minimum Match %", 0, 100, 20, 5,
+        min_match_threshold = st.slider("Minimum Match %", 20, 100, 20, 5,
                                        help="Minimum percentage of fields that must match to generate mapping")
     
     col4, col5 = st.columns(2)
