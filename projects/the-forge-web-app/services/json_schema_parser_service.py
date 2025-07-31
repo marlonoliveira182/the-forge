@@ -64,7 +64,7 @@ class JSONSchemaParser:
         # Handle root level properties
         if 'properties' in schema:
             for prop_name, prop_def in schema['properties'].items():
-                rows.extend(self._parse_property(prop_name, prop_def, [''], schema))
+                rows.extend(self._parse_property(prop_name, prop_def, [], schema))
         
         return rows
 
