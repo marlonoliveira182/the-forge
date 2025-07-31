@@ -563,12 +563,8 @@ def process_mapping(source_file, target_file, services, threshold, keep_case):
             target_temp.write(target_file.read())
             target_temp_path = target_temp.name
         
-        # Parse schemas
-        source_data = parse_schema_file(source_temp_path, services['xsd_parser'])
-        target_data = parse_schema_file(target_temp_path, services['xsd_parser'])
-        
-        # Generate mapping
-        mapping_data = services['mapping_service'].generate_mapping_from_schemas(source_data, target_data)
+        # Generate mapping using the new v8-style mapping service
+        mapping_data = services['mapping_service'].generate_mapping_from_schemas(source_temp_path, target_temp_path)
         
         # Create Excel file
         output_buffer = BytesIO()
