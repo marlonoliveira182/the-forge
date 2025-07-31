@@ -620,14 +620,11 @@ def show_schema_to_excel_page(services):
             except UnicodeDecodeError:
                 st.code(content[:500], language="text")
     
-    keep_case = st.checkbox("Keep Original Case", value=False, key="schema_case",
-                           help="Preserve original field names case")
-    
     if st.button("📋 Convert to Excel", type="primary", use_container_width=True):
         if schema_file:
             with st.spinner("🔄 Converting to Excel..."):
                 try:
-                    result = process_schema_to_excel(schema_file, services, keep_case)
+                    result = process_schema_to_excel(schema_file, services)
                     if result:
                         st.markdown('<div class="success-message">✅ Excel file generated successfully!</div>', unsafe_allow_html=True)
                         st.download_button(
@@ -1011,7 +1008,7 @@ def process_wsdl_to_xsd(wsdl_file, services):
         st.error(f"Error in WSDL extraction: {str(e)}")
         return None
 
-def process_schema_to_excel(schema_file, services, keep_case):
+def process_schema_to_excel(schema_file, services):
     """Process schema to Excel conversion"""
     try:
         # Create temporary file
