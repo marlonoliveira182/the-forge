@@ -9,34 +9,10 @@ import openpyxl
 import difflib
 from openpyxl.utils import get_column_letter
 import logging
-import sys
-from datetime import datetime
 
-# Configure logging to capture logs for frontend display
-class StreamlitHandler(logging.Handler):
-    def __init__(self):
-        super().__init__()
-        self.logs = []
-    
-    def emit(self, record):
-        log_entry = {
-            'timestamp': datetime.now().strftime('%H:%M:%S'),
-            'level': record.levelname,
-            'message': self.format(record)
-        }
-        self.logs.append(log_entry)
-        # Keep only last 100 logs to avoid memory issues
-        if len(self.logs) > 100:
-            self.logs = self.logs[-100:]
-
-# Create a global handler for frontend logging
-frontend_handler = StreamlitHandler()
-frontend_handler.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
-
-# Configure logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+# Configure basic logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-logger.addHandler(frontend_handler)
 
 # Import the microservices
 from services.xsd_parser_service import XSDParser
@@ -415,23 +391,14 @@ def show_mapping_page(services):
         reorder_attributes = st.checkbox("Reorder Attributes First", value=False,
                                        help="Reorder attributes to appear before elements in each parent structure")
     
-    # Debug logging section
-    st.markdown("### 🔍 Debug Logs")
-    show_debug_logs = st.checkbox("Show Debug Logs", value=True, 
-                                 help="Display detailed debug logs to track execution")
-    
     # Generate mapping button
     if st.button("🚀 Generate Mapping", type="primary", use_container_width=True):
         if source_file and target_file:
-            # Clear previous logs
-            frontend_handler.logs.clear()
-            
             with st.spinner("🔄 Generating mapping..."):
                 try:
                     result = process_mapping(source_file, target_file, services, threshold, keep_case, reorder_attributes)
                     if result:
                         st.markdown('<div class="success-message">✅ Mapping generated successfully!</div>', unsafe_allow_html=True)
-                        # Download button above logs
                         st.download_button(
                             label="📥 Download Excel File",
                             data=result,
@@ -439,54 +406,6 @@ def show_mapping_page(services):
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             use_container_width=True
                         )
-                        
-                        # Professional log display below download button
-                        if show_debug_logs and frontend_handler.logs:
-                            st.markdown("---")
-                            with st.expander("📋 Execution Logs", expanded=True):
-                                # Create a professional log display
-                                log_html = """
-                                <div style="
-                                    max-height: 300px; 
-                                    overflow-y: auto; 
-                                    border: 1px solid #e0e0e0; 
-                                    border-radius: 8px; 
-                                    padding: 12px; 
-                                    background-color: #f8f9fa;
-                                    font-family: 'Courier New', monospace;
-                                    font-size: 12px;
-                                    line-height: 1.4;
-                                ">
-                                """
-                                
-                                for log_entry in frontend_handler.logs:
-                                    timestamp = log_entry['timestamp']
-                                    level = log_entry['level']
-                                    message = log_entry['message']
-                                    
-                                    # Color coding based on log level
-                                    if level == 'ERROR':
-                                        color = '#dc3545'
-                                        icon = '❌'
-                                    elif level == 'WARNING':
-                                        color = '#ffc107'
-                                        icon = '⚠️'
-                                    elif level == 'DEBUG':
-                                        color = '#17a2b8'
-                                        icon = '🔍'
-                                    else:  # INFO
-                                        color = '#6c757d'
-                                        icon = 'ℹ️'
-                                    
-                                    log_html += f"""
-                                    <div style="margin-bottom: 4px; padding: 2px 0;">
-                                        <span style="color: {color}; font-weight: bold;">{icon} [{timestamp}] {level}:</span>
-                                        <span style="color: #333;"> {message}</span>
-                                    </div>
-                                    """
-                                
-                                log_html += "</div>"
-                                st.markdown(log_html, unsafe_allow_html=True)
                     else:
                         st.markdown('<div class="error-message">❌ Failed to generate mapping</div>', unsafe_allow_html=True)
                 except Exception as e:
@@ -522,22 +441,13 @@ def show_wsdl_to_xsd_page(services):
             except UnicodeDecodeError:
                 st.code(content[:500], language="text")
     
-    # Debug logging section
-    st.markdown("### 🔍 Debug Logs")
-    show_debug_logs = st.checkbox("Show Debug Logs", value=True, key="wsdl_logs",
-                                 help="Display detailed debug logs to track execution")
-    
     if st.button("🔧 Extract XSD", type="primary", use_container_width=True):
         if wsdl_file:
-            # Clear previous logs
-            frontend_handler.logs.clear()
-            
             with st.spinner("🔄 Extracting XSD..."):
                 try:
                     result = process_wsdl_to_xsd(wsdl_file, services)
                     if result:
                         st.markdown('<div class="success-message">✅ XSD extracted successfully!</div>', unsafe_allow_html=True)
-                        # Download button above logs
                         st.download_button(
                             label="📥 Download XSD File",
                             data=result,
@@ -545,54 +455,6 @@ def show_wsdl_to_xsd_page(services):
                             mime="application/xml",
                             use_container_width=True
                         )
-                        
-                        # Professional log display below download button
-                        if show_debug_logs and frontend_handler.logs:
-                            st.markdown("---")
-                            with st.expander("📋 Execution Logs", expanded=True):
-                                # Create a professional log display
-                                log_html = """
-                                <div style="
-                                    max-height: 300px; 
-                                    overflow-y: auto; 
-                                    border: 1px solid #e0e0e0; 
-                                    border-radius: 8px; 
-                                    padding: 12px; 
-                                    background-color: #f8f9fa;
-                                    font-family: 'Courier New', monospace;
-                                    font-size: 12px;
-                                    line-height: 1.4;
-                                ">
-                                """
-                                
-                                for log_entry in frontend_handler.logs:
-                                    timestamp = log_entry['timestamp']
-                                    level = log_entry['level']
-                                    message = log_entry['message']
-                                    
-                                    # Color coding based on log level
-                                    if level == 'ERROR':
-                                        color = '#dc3545'
-                                        icon = '❌'
-                                    elif level == 'WARNING':
-                                        color = '#ffc107'
-                                        icon = '⚠️'
-                                    elif level == 'DEBUG':
-                                        color = '#17a2b8'
-                                        icon = '🔍'
-                                    else:  # INFO
-                                        color = '#6c757d'
-                                        icon = 'ℹ️'
-                                    
-                                    log_html += f"""
-                                    <div style="margin-bottom: 4px; padding: 2px 0;">
-                                        <span style="color: {color}; font-weight: bold;">{icon} [{timestamp}] {level}:</span>
-                                        <span style="color: #333;"> {message}</span>
-                                    </div>
-                                    """
-                                
-                                log_html += "</div>"
-                                st.markdown(log_html, unsafe_allow_html=True)
                     else:
                         st.markdown('<div class="error-message">❌ Failed to extract XSD</div>', unsafe_allow_html=True)
                 except Exception as e:
@@ -631,22 +493,13 @@ def show_schema_to_excel_page(services):
     keep_case = st.checkbox("Keep Original Case", value=False, key="schema_case",
                            help="Preserve original field names case")
     
-    # Debug logging section
-    st.markdown("### 🔍 Debug Logs")
-    show_debug_logs = st.checkbox("Show Debug Logs", value=True, key="schema_logs",
-                                 help="Display detailed debug logs to track execution")
-    
     if st.button("📋 Convert to Excel", type="primary", use_container_width=True):
         if schema_file:
-            # Clear previous logs
-            frontend_handler.logs.clear()
-            
             with st.spinner("🔄 Converting to Excel..."):
                 try:
                     result = process_schema_to_excel(schema_file, services, keep_case)
                     if result:
                         st.markdown('<div class="success-message">✅ Excel file generated successfully!</div>', unsafe_allow_html=True)
-                        # Download button above logs
                         st.download_button(
                             label="📥 Download Excel File",
                             data=result,
@@ -654,54 +507,6 @@ def show_schema_to_excel_page(services):
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             use_container_width=True
                         )
-                        
-                        # Professional log display below download button
-                        if show_debug_logs and frontend_handler.logs:
-                            st.markdown("---")
-                            with st.expander("📋 Execution Logs", expanded=True):
-                                # Create a professional log display
-                                log_html = """
-                                <div style="
-                                    max-height: 300px; 
-                                    overflow-y: auto; 
-                                    border: 1px solid #e0e0e0; 
-                                    border-radius: 8px; 
-                                    padding: 12px; 
-                                    background-color: #f8f9fa;
-                                    font-family: 'Courier New', monospace;
-                                    font-size: 12px;
-                                    line-height: 1.4;
-                                ">
-                                """
-                                
-                                for log_entry in frontend_handler.logs:
-                                    timestamp = log_entry['timestamp']
-                                    level = log_entry['level']
-                                    message = log_entry['message']
-                                    
-                                    # Color coding based on log level
-                                    if level == 'ERROR':
-                                        color = '#dc3545'
-                                        icon = '❌'
-                                    elif level == 'WARNING':
-                                        color = '#ffc107'
-                                        icon = '⚠️'
-                                    elif level == 'DEBUG':
-                                        color = '#17a2b8'
-                                        icon = '🔍'
-                                    else:  # INFO
-                                        color = '#6c757d'
-                                        icon = 'ℹ️'
-                                    
-                                    log_html += f"""
-                                    <div style="margin-bottom: 4px; padding: 2px 0;">
-                                        <span style="color: {color}; font-weight: bold;">{icon} [{timestamp}] {level}:</span>
-                                        <span style="color: #333;"> {message}</span>
-                                    </div>
-                                    """
-                                
-                                log_html += "</div>"
-                                st.markdown(log_html, unsafe_allow_html=True)
                     else:
                         st.markdown('<div class="error-message">❌ Failed to generate Excel file</div>', unsafe_allow_html=True)
                 except Exception as e:
@@ -762,19 +567,19 @@ def show_about_page():
 
 def process_mapping(source_file, target_file, services, threshold, keep_case, reorder_attributes=False):
     """Process schema mapping using exact v8 logic"""
-    logger.debug(f"Starting process_mapping with reorder_attributes={reorder_attributes}")
+    logger.info(f"Starting process_mapping with reorder_attributes={reorder_attributes}")
     try:
         # Create temporary files
-        logger.debug("Creating temporary files...")
+        logger.info("Creating temporary files...")
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{source_file.name.split('.')[-1]}") as source_temp:
             source_temp.write(source_file.read())
             source_temp_path = source_temp.name
-            logger.debug(f"Created source temp file: {source_temp_path}")
+            logger.info(f"Created source temp file: {source_temp_path}")
         
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{target_file.name.split('.')[-1]}") as target_temp:
             target_temp.write(target_file.read())
             target_temp_path = target_temp.name
-            logger.debug(f"Created target temp file: {target_temp_path}")
+            logger.info(f"Created target temp file: {target_temp_path}")
         
         # --- v8 logic: parse source and target, multi-message, row matching, column structure ---
         
@@ -958,34 +763,34 @@ def process_mapping(source_file, target_file, services, threshold, keep_case, re
         
         # --- Attribute reordering if flag is set ---
         if reorder_attributes:
-            logger.debug("Starting attribute reordering process...")
+            logger.info("Starting attribute reordering process...")
             try:
                 from services.reorder_excel_attributes import reorder_attributes_in_excel
-                logger.debug("Successfully imported reorder_attributes_in_excel")
+                logger.info("Successfully imported reorder_attributes_in_excel")
                 
                 # Save to temporary file for reordering
-                logger.debug("Creating temporary Excel file for reordering...")
+                logger.info("Creating temporary Excel file for reordering...")
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_excel:
                     output_buffer.seek(0)
                     temp_excel.write(output_buffer.getvalue())
                     temp_excel_path = temp_excel.name
-                    logger.debug(f"Created temp Excel file for reordering: {temp_excel_path}")
+                    logger.info(f"Created temp Excel file for reordering: {temp_excel_path}")
                 
-                logger.debug("Calling reorder_attributes_in_excel...")
+                logger.info("Calling reorder_attributes_in_excel...")
                 reorder_attributes_in_excel(temp_excel_path)
-                logger.debug("reorder_attributes_in_excel completed successfully")
+                logger.info("reorder_attributes_in_excel completed successfully")
                 
                 # Read back the reordered file
-                logger.debug("Reading back the reordered file...")
+                logger.info("Reading back the reordered file...")
                 with open(temp_excel_path, 'rb') as f:
                     output_buffer.seek(0)
                     output_buffer.write(f.read())
                     output_buffer.truncate()
                 
                 # Clean up temp reordering file
-                logger.debug("Cleaning up temp reordering file...")
+                logger.info("Cleaning up temp reordering file...")
                 os.unlink(temp_excel_path)
-                logger.debug("Attribute reordering completed successfully")
+                logger.info("Attribute reordering completed successfully")
                 st.info("[INFO] Reordered attributes to appear first in each parent structure.")
             except Exception as e:
                 logger.error(f"Exception during attribute reordering: {e}", exc_info=True)
