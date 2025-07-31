@@ -23,7 +23,6 @@ from services.excel_mapping_service import ExcelMappingService
 from services.json_to_excel_service import JSONToExcelService
 from services.case_converter_service import pascal_to_camel, camel_to_pascal
 
-
 # Page configuration
 st.set_page_config(
     page_title="The Forge - Schema Transformation Tool",
@@ -37,271 +36,376 @@ st.set_page_config(
     }
 )
 
-# Custom CSS for modern UI
+# Modern CSS with proper color theory and UI/UX best practices
 st.markdown("""
 <style>
-    /* Modern Color Scheme */
+    /* Modern Color Palette - Based on Material Design 3 */
     :root {
-        --primary-color: #ff6b35;
-        --secondary-color: #2d2d2d;
-        --accent-color: #4a90e2;
-        --text-primary: #ffffff;
-        --text-secondary: #cccccc;
-        --border-color: #444444;
-        --success-color: #28a745;
-        --warning-color: #ffc107;
-        --error-color: #dc3545;
+        --primary-50: #f0f9ff;
+        --primary-100: #e0f2fe;
+        --primary-200: #bae6fd;
+        --primary-300: #7dd3fc;
+        --primary-400: #38bdf8;
+        --primary-500: #0ea5e9;
+        --primary-600: #0284c7;
+        --primary-700: #0369a1;
+        --primary-800: #075985;
+        --primary-900: #0c4a6e;
+        
+        --surface-0: #ffffff;
+        --surface-50: #f8fafc;
+        --surface-100: #f1f5f9;
+        --surface-200: #e2e8f0;
+        --surface-300: #cbd5e1;
+        --surface-400: #94a3b8;
+        --surface-500: #64748b;
+        --surface-600: #475569;
+        --surface-700: #334155;
+        --surface-800: #1e293b;
+        --surface-900: #0f172a;
+        
+        --success-500: #10b981;
+        --success-600: #059669;
+        --warning-500: #f59e0b;
+        --warning-600: #d97706;
+        --error-500: #ef4444;
+        --error-600: #dc2626;
+        
+        --text-primary: #1e293b;
+        --text-secondary: #64748b;
+        --text-tertiary: #94a3b8;
+        --text-on-primary: #ffffff;
+        
+        --border-light: #e2e8f0;
+        --border-medium: #cbd5e1;
+        --border-dark: #94a3b8;
+        
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        
+        --radius-sm: 0.375rem;
+        --radius-md: 0.5rem;
+        --radius-lg: 0.75rem;
+        --radius-xl: 1rem;
+        
+        --spacing-xs: 0.25rem;
+        --spacing-sm: 0.5rem;
+        --spacing-md: 1rem;
+        --spacing-lg: 1.5rem;
+        --spacing-xl: 2rem;
+        --spacing-2xl: 3rem;
     }
     
-    /* Global Styles */
+    /* Dark mode variables */
+    [data-testid="stAppViewContainer"] {
+        background: linear-gradient(135deg, var(--surface-50) 0%, var(--surface-100) 100%);
+    }
+    
+    /* Global Typography */
     .stApp {
-        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        line-height: 1.6;
     }
     
     /* Modern Header */
     .main-header {
-        background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%);
-        color: var(--text-primary);
-        padding: 3rem 2rem;
-        border-radius: 16px;
+        background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
+        color: var(--text-on-primary);
+        padding: var(--spacing-2xl) var(--spacing-xl);
+        border-radius: var(--radius-xl);
         text-align: center;
-        margin-bottom: 2rem;
-        border: 1px solid var(--border-color);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        backdrop-filter: blur(10px);
+        margin-bottom: var(--spacing-xl);
+        box-shadow: var(--shadow-lg);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .main-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+        opacity: 0.3;
     }
     
     .main-header h1 {
-        color: var(--primary-color);
-        margin-bottom: 0.5rem;
+        color: var(--text-on-primary);
+        margin-bottom: var(--spacing-sm);
         font-size: 2.5rem;
         font-weight: 700;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        letter-spacing: -0.025em;
+        position: relative;
+        z-index: 1;
     }
     
     .main-header p {
-        color: var(--text-secondary);
-        font-size: 1.1rem;
-        margin-top: 0.5rem;
+        color: var(--primary-100);
+        font-size: 1.125rem;
+        margin-top: var(--spacing-sm);
+        position: relative;
+        z-index: 1;
     }
     
     /* Modern Section Headers */
     .section-header {
-        background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%);
+        background: var(--surface-0);
         color: var(--text-primary);
-        padding: 1.5rem 2rem;
-        border-radius: 12px;
-        margin: 2rem 0 1.5rem 0;
-        border: 1px solid var(--border-color);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        padding: var(--spacing-lg) var(--spacing-xl);
+        border-radius: var(--radius-lg);
+        margin: var(--spacing-xl) 0 var(--spacing-lg) 0;
+        border: 1px solid var(--border-light);
+        box-shadow: var(--shadow-sm);
+        position: relative;
     }
     
     .section-header h2, .section-header h3 {
-        color: var(--primary-color);
+        color: var(--text-primary);
         margin: 0;
         font-weight: 600;
+        font-size: 1.5rem;
+        letter-spacing: -0.025em;
     }
     
-    /* Modern Feature Cards */
-    .feature-card {
-        background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%);
-        padding: 2rem;
-        border-radius: 12px;
-        border: 1px solid var(--border-color);
-        margin: 1.5rem 0;
+    /* Modern Cards */
+    .modern-card {
+        background: var(--surface-0);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-xl);
+        margin: var(--spacing-lg) 0;
+        box-shadow: var(--shadow-sm);
+        transition: all 0.2s ease;
+    }
+    
+    .modern-card:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+    }
+    
+    .modern-card h3 {
         color: var(--text-primary);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-    
-    .feature-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-    }
-    
-    .feature-card h3 {
-        color: var(--primary-color);
-        margin-bottom: 1rem;
+        margin-bottom: var(--spacing-md);
         font-weight: 600;
-        font-size: 1.3rem;
+        font-size: 1.25rem;
     }
     
-    .feature-card p {
+    .modern-card p {
         color: var(--text-secondary);
         line-height: 1.6;
-        margin-bottom: 1rem;
-    }
-    
-    .feature-card ul {
-        color: var(--text-secondary);
-        margin-left: 1rem;
-    }
-    
-    .feature-card li {
-        color: var(--text-secondary);
-        margin-bottom: 0.5rem;
+        margin-bottom: var(--spacing-md);
     }
     
     /* Modern Buttons */
     .stButton > button {
-        background: linear-gradient(135deg, var(--primary-color) 0%, #ff8c42 100%);
-        color: var(--text-primary);
+        background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
+        color: var(--text-on-primary);
         border: none;
-        border-radius: 6px;
-        padding: 12px 24px;
+        border-radius: var(--radius-md);
+        padding: var(--spacing-md) var(--spacing-lg);
         font-weight: 500;
+        font-size: 0.875rem;
         transition: all 0.2s ease;
+        box-shadow: var(--shadow-sm);
     }
+    
     .stButton > button:hover {
-        background: linear-gradient(135deg, #e55a2b 0%, #ff8c42 100%);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+        background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-800) 100%);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+    }
+    
+    .stButton > button:active {
+        transform: translateY(0);
+    }
+    
+    /* Secondary Button Style */
+    .secondary-button {
+        background: var(--surface-100) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--border-medium) !important;
+    }
+    
+    .secondary-button:hover {
+        background: var(--surface-200) !important;
+        border-color: var(--border-dark) !important;
     }
     
     /* Modern Upload Area */
     .upload-area {
-        border: 2px dashed var(--accent-color);
-        border-radius: 16px;
-        padding: 3rem 2rem;
+        border: 2px dashed var(--primary-300);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-2xl) var(--spacing-xl);
         text-align: center;
-        background: linear-gradient(135deg, rgba(74, 144, 226, 0.1) 0%, rgba(255, 107, 53, 0.1) 100%);
-        margin: 1.5rem 0;
+        background: linear-gradient(135deg, var(--primary-50) 0%, var(--primary-100) 100%);
+        margin: var(--spacing-lg) 0;
         transition: all 0.3s ease;
+        position: relative;
     }
     
     .upload-area:hover {
-        border-color: var(--primary-color);
-        background: linear-gradient(135deg, rgba(74, 144, 226, 0.2) 0%, rgba(255, 107, 53, 0.2) 100%);
+        border-color: var(--primary-500);
+        background: linear-gradient(135deg, var(--primary-100) 0%, var(--primary-200) 100%);
         transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
     }
     
     /* Modern Message Styles */
     .success-message {
-        background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(40, 167, 69, 0.2) 100%);
-        color: var(--success-color);
-        padding: 1.5rem;
-        border-radius: 12px;
-        margin: 1.5rem 0;
-        border: 1px solid var(--success-color);
-        box-shadow: 0 4px 16px rgba(40, 167, 69, 0.2);
+        background: linear-gradient(135deg, var(--success-500) 0%, var(--success-600) 100%);
+        color: var(--text-on-primary);
+        padding: var(--spacing-lg);
+        border-radius: var(--radius-lg);
+        margin: var(--spacing-lg) 0;
+        box-shadow: var(--shadow-sm);
+        border-left: 4px solid var(--success-600);
     }
     
     .error-message {
-        background: linear-gradient(135deg, rgba(220, 53, 69, 0.1) 0%, rgba(220, 53, 69, 0.2) 100%);
-        color: var(--error-color);
-        padding: 1.5rem;
-        border-radius: 12px;
-        margin: 1.5rem 0;
-        border: 1px solid var(--error-color);
-        box-shadow: 0 4px 16px rgba(220, 53, 69, 0.2);
+        background: linear-gradient(135deg, var(--error-500) 0%, var(--error-600) 100%);
+        color: var(--text-on-primary);
+        padding: var(--spacing-lg);
+        border-radius: var(--radius-lg);
+        margin: var(--spacing-lg) 0;
+        box-shadow: var(--shadow-sm);
+        border-left: 4px solid var(--error-600);
     }
     
     .warning-message {
-        background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 193, 7, 0.2) 100%);
-        color: var(--warning-color);
-        padding: 1.5rem;
-        border-radius: 12px;
-        margin: 1.5rem 0;
-        border: 1px solid var(--warning-color);
-        box-shadow: 0 4px 16px rgba(255, 193, 7, 0.2);
+        background: linear-gradient(135deg, var(--warning-500) 0%, var(--warning-600) 100%);
+        color: var(--text-on-primary);
+        padding: var(--spacing-lg);
+        border-radius: var(--radius-lg);
+        margin: var(--spacing-lg) 0;
+        box-shadow: var(--shadow-sm);
+        border-left: 4px solid var(--warning-600);
     }
     
     /* Modern Tab Styling */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%);
-        border-radius: 12px;
-        padding: 8px;
-        border: 1px solid var(--border-color);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        gap: var(--spacing-sm);
+        background: var(--surface-0);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-sm);
+        border: 1px solid var(--border-light);
+        box-shadow: var(--shadow-sm);
+        margin-bottom: var(--spacing-lg);
     }
     
     .stTabs [data-baseweb="tab"] {
         background: transparent;
         color: var(--text-secondary);
-        border-radius: 8px;
-        padding: 12px 24px;
+        border-radius: var(--radius-md);
+        padding: var(--spacing-md) var(--spacing-lg);
         font-weight: 500;
-        transition: all 0.3s ease;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
         border: none;
     }
     
     .stTabs [data-baseweb="tab"]:hover {
-        background: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(255, 107, 53, 0.2) 100%);
+        background: var(--surface-100);
         color: var(--text-primary);
-        transform: translateY(-2px);
     }
     
     .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, var(--primary-color) 0%, #ff8c42 100%);
-        color: var(--text-primary);
+        background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
+        color: var(--text-on-primary);
         font-weight: 600;
-        box-shadow: 0 4px 16px rgba(255, 107, 53, 0.4);
-    }
-
-    /* Modern Dark Theme Styling */
-    .main .block-container {
-        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-        color: var(--text-primary);
-        padding: 2rem;
+        box-shadow: var(--shadow-sm);
     }
     
-    .main .block-container p {
-        color: var(--text-secondary);
-        line-height: 1.7;
-        font-size: 1.05rem;
-    }
-    
-    .main .block-container h1, .main .block-container h2, .main .block-container h3 {
-        color: var(--primary-color);
-        font-weight: 600;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    }
-    
-    .main .block-container ul, .main .block-container ol {
-        color: var(--text-secondary);
-    }
-    
-    .main .block-container li {
-        color: var(--text-secondary);
-        margin-bottom: 0.75rem;
-        line-height: 1.6;
-    }
-    
-    /* Modern Streamlit Widget Styling */
+    /* Modern Form Elements */
     .stSelectbox, .stSlider, .stCheckbox {
-        background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        background: var(--surface-0);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-sm);
     }
     
     .stFileUploader {
-        background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        background: var(--surface-0);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        padding: var(--spacing-md);
     }
     
     /* Modern Code blocks */
     .stCode {
-        background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        background: var(--surface-800);
+        border: 1px solid var(--border-dark);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-sm);
+        color: var(--surface-100);
     }
     
     /* Modern DataFrames */
     .dataframe {
-        background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        background: var(--surface-0);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-sm);
     }
     
     /* Modern Progress Bars */
     .stProgress > div > div > div > div {
-        background: linear-gradient(135deg, var(--primary-color) 0%, #ff8c42 100%);
+        background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
+        border-radius: var(--radius-sm);
+    }
+    
+    /* Modern Expander */
+    .streamlit-expanderHeader {
+        background: var(--surface-0);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-md);
+        padding: var(--spacing-md);
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+    
+    /* Modern Spinner */
+    .stSpinner > div {
+        border-color: var(--primary-600);
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .main-header {
+            padding: var(--spacing-lg) var(--spacing-md);
+        }
+        
+        .main-header h1 {
+            font-size: 2rem;
+        }
+        
+        .section-header {
+            padding: var(--spacing-md);
+        }
+        
+        .modern-card {
+            padding: var(--spacing-lg);
+        }
+    }
+    
+    /* Accessibility Improvements */
+    .stButton > button:focus {
+        outline: 2px solid var(--primary-500);
+        outline-offset: 2px;
+    }
+    
+    .stTabs [data-baseweb="tab"]:focus {
+        outline: 2px solid var(--primary-500);
+        outline-offset: 2px;
+    }
+    
+    /* Smooth Scrolling */
+    html {
+        scroll-behavior: smooth;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -318,11 +422,11 @@ def get_services():
     }
 
 def main():
-    # Header
+    # Modern Header
     st.markdown('''
         <div class="main-header">
-            <h1>🔨 The Forge - Schema Transformation Tool</h1>
-            <p style="font-size: 1.2rem; margin-top: 0.5rem;">Powerful schema transformation and mapping tool</p>
+            <h1>🔨 The Forge</h1>
+            <p>Advanced Schema Transformation & Mapping Tool</p>
         </div>
     ''', unsafe_allow_html=True)
     
@@ -352,38 +456,41 @@ def show_home_page():
     """
     Display the home page with modern UI components and feature overview.
     """
-    st.markdown('<div class="section-header"><h2>🏠 Welcome to The Forge</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h2>Welcome to The Forge</h2></div>', unsafe_allow_html=True)
     
-    # Modern welcome message with animation
+    # Modern welcome message
     st.markdown("""
-    **The Forge** is your comprehensive schema transformation toolkit. Transform, map, and analyze schema files with ease.
+    **The Forge** is your comprehensive schema transformation toolkit. Transform, map, and analyze schema files with ease using our powerful, modern interface.
     """)
     
-    # Modern feature cards using streamlit-extras
+    # Feature cards using modern design
     col1, col2 = st.columns(2)
     
     with col1:
         # Schema Mapping Card
         card(
-            title="📊 Schema Mapping",
+            title="Schema Mapping",
             text="Create field mappings between different schema formats (XSD, JSON Schema). Automatically detect similarities and generate comprehensive mapping documentation.",
             styles={
                 "card": {
                     "width": "100%",
                     "height": "100%",
-                    "background": "linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%)",
-                    "border": "1px solid #444444",
-                    "border-radius": "12px",
-                    "padding": "1.5rem",
-                    "margin": "1rem 0"
+                    "background": "var(--surface-0)",
+                    "border": "1px solid var(--border-light)",
+                    "border-radius": "var(--radius-lg)",
+                    "padding": "var(--spacing-xl)",
+                    "margin": "var(--spacing-lg) 0",
+                    "box-shadow": "var(--shadow-sm)",
+                    "transition": "all 0.2s ease"
                 },
                 "title": {
-                    "color": "#ff6b35",
+                    "color": "var(--text-primary)",
                     "font-weight": "600",
-                    "font-size": "1.3rem"
+                    "font-size": "1.25rem",
+                    "margin-bottom": "var(--spacing-md)"
                 },
                 "text": {
-                    "color": "#cccccc",
+                    "color": "var(--text-secondary)",
                     "line-height": "1.6"
                 }
             }
@@ -391,25 +498,28 @@ def show_home_page():
         
         # WSDL to XSD Card
         card(
-            title="🔧 WSDL to XSD Extraction",
+            title="WSDL to XSD Extraction",
             text="Extract XSD schemas from WSDL files. Perfect for working with web services and SOAP APIs.",
             styles={
                 "card": {
                     "width": "100%",
                     "height": "100%",
-                    "background": "linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%)",
-                    "border": "1px solid #444444",
-                    "border-radius": "12px",
-                    "padding": "1.5rem",
-                    "margin": "1rem 0"
+                    "background": "var(--surface-0)",
+                    "border": "1px solid var(--border-light)",
+                    "border-radius": "var(--radius-lg)",
+                    "padding": "var(--spacing-xl)",
+                    "margin": "var(--spacing-lg) 0",
+                    "box-shadow": "var(--shadow-sm)",
+                    "transition": "all 0.2s ease"
                 },
                 "title": {
-                    "color": "#ff6b35",
+                    "color": "var(--text-primary)",
                     "font-weight": "600",
-                    "font-size": "1.3rem"
+                    "font-size": "1.25rem",
+                    "margin-bottom": "var(--spacing-md)"
                 },
                 "text": {
-                    "color": "#cccccc",
+                    "color": "var(--text-secondary)",
                     "line-height": "1.6"
                 }
             }
@@ -418,25 +528,28 @@ def show_home_page():
     with col2:
         # Schema to Excel Card
         card(
-            title="📋 Schema to Excel",
+            title="Schema to Excel",
             text="Convert schema files to Excel format for easy analysis and documentation.",
             styles={
                 "card": {
                     "width": "100%",
                     "height": "100%",
-                    "background": "linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%)",
-                    "border": "1px solid #444444",
-                    "border-radius": "12px",
-                    "padding": "1.5rem",
-                    "margin": "1rem 0"
+                    "background": "var(--surface-0)",
+                    "border": "1px solid var(--border-light)",
+                    "border-radius": "var(--radius-lg)",
+                    "padding": "var(--spacing-xl)",
+                    "margin": "var(--spacing-lg) 0",
+                    "box-shadow": "var(--shadow-sm)",
+                    "transition": "all 0.2s ease"
                 },
                 "title": {
-                    "color": "#ff6b35",
+                    "color": "var(--text-primary)",
                     "font-weight": "600",
-                    "font-size": "1.3rem"
+                    "font-size": "1.25rem",
+                    "margin-bottom": "var(--spacing-md)"
                 },
                 "text": {
-                    "color": "#cccccc",
+                    "color": "var(--text-secondary)",
                     "line-height": "1.6"
                 }
             }
@@ -444,25 +557,28 @@ def show_home_page():
         
         # Quick Start Card
         card(
-            title="🚀 Quick Start Guide",
+            title="Quick Start Guide",
             text="1. **Schema Mapping**: Upload source and target schema files\n2. **WSDL to XSD**: Upload a WSDL file to extract schemas\n3. **Schema to Excel**: Upload any schema file to convert",
             styles={
                 "card": {
                     "width": "100%",
                     "height": "100%",
-                    "background": "linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%)",
-                    "border": "1px solid #444444",
-                    "border-radius": "12px",
-                    "padding": "1.5rem",
-                    "margin": "1rem 0"
+                    "background": "var(--surface-0)",
+                    "border": "1px solid var(--border-light)",
+                    "border-radius": "var(--radius-lg)",
+                    "padding": "var(--spacing-xl)",
+                    "margin": "var(--spacing-lg) 0",
+                    "box-shadow": "var(--shadow-sm)",
+                    "transition": "all 0.2s ease"
                 },
                 "title": {
-                    "color": "#ff6b35",
+                    "color": "var(--text-primary)",
                     "font-weight": "600",
-                    "font-size": "1.3rem"
+                    "font-size": "1.25rem",
+                    "margin-bottom": "var(--spacing-md)"
                 },
                 "text": {
-                    "color": "#cccccc",
+                    "color": "var(--text-secondary)",
                     "line-height": "1.6"
                 }
             }
@@ -482,7 +598,7 @@ def show_home_page():
     """)
 
 def show_mapping_page(services):
-    st.markdown('<div class="section-header"><h2>📊 Schema Mapping</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h2>Schema Mapping</h2></div>', unsafe_allow_html=True)
     
     st.markdown("""
     Create field mappings between different schema formats. Upload source and target schema files to generate comprehensive mapping documentation.
@@ -491,7 +607,7 @@ def show_mapping_page(services):
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("### 📤 Source Schema")
+        st.markdown("### Source Schema")
         source_file = st.file_uploader(
             "Upload source schema file",
             type=['xsd', 'xml', 'json'],
@@ -517,7 +633,7 @@ def show_mapping_page(services):
                     st.code(content[:500], language="text")
     
     with col2:
-        st.markdown("### 📥 Target Schema")
+        st.markdown("### Target Schema")
         target_file = st.file_uploader(
             "Upload target schema file",
             type=['xsd', 'xml', 'json'],
@@ -543,7 +659,7 @@ def show_mapping_page(services):
                     st.code(content[:500], language="text")
     
     # Settings
-    st.markdown("### ⚙️ Settings")
+    st.markdown("### Settings")
     col1, col2, col3 = st.columns(3)
     with col1:
         source_case = st.selectbox("Source Case", ["Original", "PascalCase", "camelCase"], 
@@ -561,9 +677,9 @@ def show_mapping_page(services):
                                        help="Reorder attributes to appear before elements in each parent structure")
     
     # Generate mapping button
-    if st.button("🚀 Generate Mapping", type="primary", use_container_width=True):
+    if st.button("Generate Mapping", type="primary", use_container_width=True):
         if source_file and target_file:
-            with st.spinner("🔄 Generating mapping..."):
+            with st.spinner("Generating mapping..."):
                 try:
                     result = process_mapping(source_file, target_file, services, source_case, target_case, reorder_attributes, min_match_threshold)
                     if result:
@@ -584,7 +700,7 @@ def show_mapping_page(services):
             st.markdown('<div class="warning-message">⚠️ Please upload both source and target schema files</div>', unsafe_allow_html=True)
 
 def show_wsdl_to_xsd_page(services):
-    st.markdown('<div class="section-header"><h2>🔧 WSDL to XSD Extraction</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h2>WSDL to XSD Extraction</h2></div>', unsafe_allow_html=True)
     
     st.markdown("""
     Extract XSD schemas from WSDL files. Perfect for working with web services and SOAP APIs.
@@ -610,9 +726,9 @@ def show_wsdl_to_xsd_page(services):
             except UnicodeDecodeError:
                 st.code(content[:500], language="text")
     
-    if st.button("🔧 Extract XSD", type="primary", use_container_width=True):
+    if st.button("Extract XSD", type="primary", use_container_width=True):
         if wsdl_file:
-            with st.spinner("🔄 Extracting XSD..."):
+            with st.spinner("Extracting XSD..."):
                 try:
                     result = process_wsdl_to_xsd(wsdl_file, services)
                     if result:
@@ -633,7 +749,7 @@ def show_wsdl_to_xsd_page(services):
             st.markdown('<div class="warning-message">⚠️ Please upload a WSDL file</div>', unsafe_allow_html=True)
 
 def show_schema_to_excel_page(services):
-    st.markdown('<div class="section-header"><h2>📋 Schema to Excel</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h2>Schema to Excel</h2></div>', unsafe_allow_html=True)
     
     st.markdown("""
     Convert schema files to Excel format for easy analysis and documentation.
@@ -663,9 +779,9 @@ def show_schema_to_excel_page(services):
             except UnicodeDecodeError:
                 st.code(content[:500], language="text")
     
-    if st.button("📋 Convert to Excel", type="primary", use_container_width=True):
+    if st.button("Convert to Excel", type="primary", use_container_width=True):
         if schema_file:
-            with st.spinner("🔄 Converting to Excel..."):
+            with st.spinner("Converting to Excel..."):
                 try:
                     # Convert to Excel
                     result = process_schema_to_excel(schema_file, services)
@@ -725,24 +841,22 @@ def show_schema_to_excel_page(services):
         else:
             st.markdown('<div class="warning-message">⚠️ Please upload a schema file</div>', unsafe_allow_html=True)
 
-
-
 def show_about_page():
     """
     Display the about page with application information and features.
     """
-    st.markdown('<div class="section-header"><h2>ℹ️ About The Forge</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h2>About The Forge</h2></div>', unsafe_allow_html=True)
     
     st.markdown("""
     **The Forge** is a powerful schema transformation tool that provides comprehensive capabilities for working with schema files.
     
-    ### 🎯 Core Features
+    ### Core Features
     
-    - **📊 Schema Mapping**: Create field mappings between different schema formats (XSD, JSON Schema)
-    - **🔧 WSDL to XSD Extraction**: Extract XSD schemas from WSDL files
-    - **📋 Schema to Excel**: Convert schema files to Excel format for analysis
+    - **Schema Mapping**: Create field mappings between different schema formats (XSD, JSON Schema)
+    - **WSDL to XSD Extraction**: Extract XSD schemas from WSDL files
+    - **Schema to Excel**: Convert schema files to Excel format for analysis
     
-    ### 📁 Supported Formats
+    ### Supported Formats
     
     **Input Formats:**
     - XSD (.xsd)
@@ -754,7 +868,7 @@ def show_about_page():
     - Excel (.xlsx)
     - XSD (.xsd)
     
-    ### 🚀 Key Benefits
+    ### Key Benefits
     
     - ✅ **No compilation issues** - Pure Python implementation
     - ✅ **Lightweight dependencies** - Minimal external requirements
@@ -762,18 +876,18 @@ def show_about_page():
     - ✅ **Production ready** - Robust error handling and validation
     - ✅ **Modern web interface** - Clean, responsive Streamlit UI
     
-    ### 🔧 Technical Details
+    ### Technical Details
     
     This web version is based on The Forge v8 desktop application, adapted for online deployment with Streamlit.
     The application uses microservices architecture for modular functionality and easy maintenance.
     
-    ### 📞 Support
+    ### Support
     
     For issues, questions, or feature requests, please refer to the project documentation or create an issue in the repository.
     """)
     
     # Version info
-    st.markdown("### 📋 Version Information")
+    st.markdown("### Version Information")
     st.code("""
     The Forge Web App v1.0.0
     Built with Streamlit
