@@ -431,6 +431,7 @@ def show_mapping_page(services):
                     result = process_mapping(source_file, target_file, services, threshold, keep_case, reorder_attributes)
                     if result:
                         st.markdown('<div class="success-message">✅ Mapping generated successfully!</div>', unsafe_allow_html=True)
+                        # Download button above logs
                         st.download_button(
                             label="📥 Download Excel File",
                             data=result,
@@ -446,17 +447,48 @@ def show_mapping_page(services):
             # Display logs if enabled
             if show_debug_logs and frontend_handler.logs:
                 st.markdown("### 📋 Execution Logs")
+                
+                # Create a scrollable container with fixed height
                 log_container = st.container()
                 with log_container:
+                    # Use HTML to create a scrollable div with fixed height
+                    log_html = """
+                    <div style="
+                        max-height: 300px; 
+                        overflow-y: auto; 
+                        border: 1px solid #e0e0e0; 
+                        border-radius: 8px; 
+                        padding: 10px; 
+                        background-color: #f8f9fa;
+                        font-family: 'Courier New', monospace;
+                        font-size: 12px;
+                        line-height: 1.4;
+                    ">
+                    """
+                    
                     for log_entry in frontend_handler.logs:
-                        if log_entry['level'] == 'ERROR':
-                            st.error(f"[{log_entry['timestamp']}] {log_entry['message']}")
-                        elif log_entry['level'] == 'WARNING':
-                            st.warning(f"[{log_entry['timestamp']}] {log_entry['message']}")
-                        elif log_entry['level'] == 'DEBUG':
-                            st.info(f"[{log_entry['timestamp']}] {log_entry['message']}")
+                        timestamp = log_entry['timestamp']
+                        message = log_entry['message']
+                        level = log_entry['level']
+                        
+                        # Color code based on log level
+                        if level == 'ERROR':
+                            color = '#dc3545'
+                            icon = '❌'
+                        elif level == 'WARNING':
+                            color = '#ffc107'
+                            icon = '⚠️'
+                        elif level == 'DEBUG':
+                            color = '#17a2b8'
+                            icon = '🔍'
                         else:
-                            st.text(f"[{log_entry['timestamp']}] {log_entry['message']}")
+                            color = '#6c757d'
+                            icon = 'ℹ️'
+                        
+                        log_html += f'<div style="margin-bottom: 4px;"><span style="color: {color}; font-weight: bold;">{icon} [{timestamp}]</span> <span style="color: #333;">{message}</span></div>'
+                    
+                    log_html += "</div>"
+                    st.markdown(log_html, unsafe_allow_html=True)
         else:
             st.markdown('<div class="warning-message">⚠️ Please upload both source and target schema files</div>', unsafe_allow_html=True)
 
@@ -502,6 +534,7 @@ def show_wsdl_to_xsd_page(services):
                     result = process_wsdl_to_xsd(wsdl_file, services)
                     if result:
                         st.markdown('<div class="success-message">✅ XSD extracted successfully!</div>', unsafe_allow_html=True)
+                        # Download button above logs
                         st.download_button(
                             label="📥 Download XSD File",
                             data=result,
@@ -517,17 +550,48 @@ def show_wsdl_to_xsd_page(services):
             # Display logs if enabled
             if show_debug_logs and frontend_handler.logs:
                 st.markdown("### 📋 Execution Logs")
+                
+                # Create a scrollable container with fixed height
                 log_container = st.container()
                 with log_container:
+                    # Use HTML to create a scrollable div with fixed height
+                    log_html = """
+                    <div style="
+                        max-height: 300px; 
+                        overflow-y: auto; 
+                        border: 1px solid #e0e0e0; 
+                        border-radius: 8px; 
+                        padding: 10px; 
+                        background-color: #f8f9fa;
+                        font-family: 'Courier New', monospace;
+                        font-size: 12px;
+                        line-height: 1.4;
+                    ">
+                    """
+                    
                     for log_entry in frontend_handler.logs:
-                        if log_entry['level'] == 'ERROR':
-                            st.error(f"[{log_entry['timestamp']}] {log_entry['message']}")
-                        elif log_entry['level'] == 'WARNING':
-                            st.warning(f"[{log_entry['timestamp']}] {log_entry['message']}")
-                        elif log_entry['level'] == 'DEBUG':
-                            st.info(f"[{log_entry['timestamp']}] {log_entry['message']}")
+                        timestamp = log_entry['timestamp']
+                        message = log_entry['message']
+                        level = log_entry['level']
+                        
+                        # Color code based on log level
+                        if level == 'ERROR':
+                            color = '#dc3545'
+                            icon = '❌'
+                        elif level == 'WARNING':
+                            color = '#ffc107'
+                            icon = '⚠️'
+                        elif level == 'DEBUG':
+                            color = '#17a2b8'
+                            icon = '🔍'
                         else:
-                            st.text(f"[{log_entry['timestamp']}] {log_entry['message']}")
+                            color = '#6c757d'
+                            icon = 'ℹ️'
+                        
+                        log_html += f'<div style="margin-bottom: 4px;"><span style="color: {color}; font-weight: bold;">{icon} [{timestamp}]</span> <span style="color: #333;">{message}</span></div>'
+                    
+                    log_html += "</div>"
+                    st.markdown(log_html, unsafe_allow_html=True)
         else:
             st.markdown('<div class="warning-message">⚠️ Please upload a WSDL file</div>', unsafe_allow_html=True)
 
@@ -576,6 +640,7 @@ def show_schema_to_excel_page(services):
                     result = process_schema_to_excel(schema_file, services, keep_case)
                     if result:
                         st.markdown('<div class="success-message">✅ Excel file generated successfully!</div>', unsafe_allow_html=True)
+                        # Download button above logs
                         st.download_button(
                             label="📥 Download Excel File",
                             data=result,
@@ -591,17 +656,48 @@ def show_schema_to_excel_page(services):
             # Display logs if enabled
             if show_debug_logs and frontend_handler.logs:
                 st.markdown("### 📋 Execution Logs")
+                
+                # Create a scrollable container with fixed height
                 log_container = st.container()
                 with log_container:
+                    # Use HTML to create a scrollable div with fixed height
+                    log_html = """
+                    <div style="
+                        max-height: 300px; 
+                        overflow-y: auto; 
+                        border: 1px solid #e0e0e0; 
+                        border-radius: 8px; 
+                        padding: 10px; 
+                        background-color: #f8f9fa;
+                        font-family: 'Courier New', monospace;
+                        font-size: 12px;
+                        line-height: 1.4;
+                    ">
+                    """
+                    
                     for log_entry in frontend_handler.logs:
-                        if log_entry['level'] == 'ERROR':
-                            st.error(f"[{log_entry['timestamp']}] {log_entry['message']}")
-                        elif log_entry['level'] == 'WARNING':
-                            st.warning(f"[{log_entry['timestamp']}] {log_entry['message']}")
-                        elif log_entry['level'] == 'DEBUG':
-                            st.info(f"[{log_entry['timestamp']}] {log_entry['message']}")
+                        timestamp = log_entry['timestamp']
+                        message = log_entry['message']
+                        level = log_entry['level']
+                        
+                        # Color code based on log level
+                        if level == 'ERROR':
+                            color = '#dc3545'
+                            icon = '❌'
+                        elif level == 'WARNING':
+                            color = '#ffc107'
+                            icon = '⚠️'
+                        elif level == 'DEBUG':
+                            color = '#17a2b8'
+                            icon = '🔍'
                         else:
-                            st.text(f"[{log_entry['timestamp']}] {log_entry['message']}")
+                            color = '#6c757d'
+                            icon = 'ℹ️'
+                        
+                        log_html += f'<div style="margin-bottom: 4px;"><span style="color: {color}; font-weight: bold;">{icon} [{timestamp}]</span> <span style="color: #333;">{message}</span></div>'
+                    
+                    log_html += "</div>"
+                    st.markdown(log_html, unsafe_allow_html=True)
         else:
             st.markdown('<div class="warning-message">⚠️ Please upload a schema file</div>', unsafe_allow_html=True)
 
