@@ -20,6 +20,7 @@ from services.excel_export_service import ExcelExporter
 from services.wsdl_to_xsd_extractor import merge_xsd_from_wsdl
 from services.excel_mapping_service import ExcelMappingService
 from services.json_to_excel_service import JSONToExcelService
+from services.case_converter_service import pascal_to_camel, camel_to_pascal
 
 # Page configuration
 st.set_page_config(
@@ -385,9 +386,14 @@ def show_mapping_page(services):
         threshold = st.slider("Similarity Threshold", 0.0, 1.0, 0.7, 0.1, 
                             help="Minimum similarity score for automatic field matching")
     with col2:
-        keep_case = st.checkbox("Keep Original Case", value=False, 
-                               help="Preserve original field names case")
+        source_case = st.selectbox("Source Case", ["Original", "PascalCase", "camelCase"], 
+                                  help="Convert source field names to specified case")
     with col3:
+        target_case = st.selectbox("Target Case", ["Original", "PascalCase", "camelCase"], 
+                                  help="Convert target field names to specified case")
+    
+    col4, col5 = st.columns(2)
+    with col4:
         reorder_attributes = st.checkbox("Reorder Attributes First", value=False,
                                        help="Reorder attributes to appear before elements in each parent structure")
     
@@ -396,7 +402,7 @@ def show_mapping_page(services):
         if source_file and target_file:
             with st.spinner("🔄 Generating mapping..."):
                 try:
-                    result = process_mapping(source_file, target_file, services, threshold, keep_case, reorder_attributes)
+                    result = process_mapping(source_file, target_file, services, threshold, source_case, target_case, reorder_attributes)
                     if result:
                         st.markdown('<div class="success-message">✅ Mapping generated successfully!</div>', unsafe_allow_html=True)
                         st.download_button(
@@ -565,9 +571,9 @@ def show_about_page():
     Based on The Forge v8 Desktop Application
     """)
 
-def process_mapping(source_file, target_file, services, threshold, keep_case, reorder_attributes=False):
+def process_mapping(source_file, target_file, services, threshold, source_case="Original", target_case="Original", reorder_attributes=False):
     """Process schema mapping using exact v8 logic"""
-    logger.info(f"Starting process_mapping with reorder_attributes={reorder_attributes}")
+    logger.info(f"Starting process_mapping with source_case={source_case}, target_case={target_case}, reorder_attributes={reorder_attributes}")
     try:
         # Create temporary files
         logger.info("Creating temporary files...")
@@ -666,7 +672,14 @@ def process_mapping(source_file, target_file, services, threshold, keep_case, re
             tgt_paths = list(tgt_path_dict.keys())
             
             for src_row in src_full_rows:
-                src_levels = src_row['levels'] + [''] * (max_src_level - len(src_row['levels']))
+                # Apply case conversion to source levels if needed
+                converted_levels = src_row['levels'].copy()
+                if source_case == "PascalCase":
+                    converted_levels = [camel_to_pascal(level) for level in converted_levels]
+                elif source_case == "camelCase":
+                    converted_levels = [pascal_to_camel(level) for level in converted_levels]
+                
+                src_levels = converted_levels + [''] * (max_src_level - len(converted_levels))
                 src_vals = src_levels + [
                     src_row.get('Request Parameter',''),
                     src_row.get('GDPR',''),
@@ -688,7 +701,17 @@ def process_mapping(source_file, target_file, services, threshold, keep_case, re
                         best_match = matches[0]
                         tgt_row = tgt_path_dict[best_match]
                 
-                tgt_levels = tgt_row['levels'] + [''] * (max_tgt_level - len(tgt_row['levels'])) if tgt_row else ['']*max_tgt_level
+                # Apply case conversion to target levels if needed
+                converted_tgt_levels = []
+                if tgt_row:
+                    converted_tgt_levels = tgt_row['levels'].copy()
+                    if target_case == "PascalCase":
+                        converted_tgt_levels = [camel_to_pascal(level) for level in converted_tgt_levels]
+                    elif target_case == "camelCase":
+                        converted_tgt_levels = [pascal_to_camel(level) for level in converted_tgt_levels]
+                    tgt_levels = converted_tgt_levels + [''] * (max_tgt_level - len(converted_tgt_levels))
+                else:
+                    tgt_levels = ['']*max_tgt_level
                 tgt_vals = tgt_levels + [
                     tgt_row.get('Request Parameter','') if tgt_row else '',
                     tgt_row.get('GDPR','') if tgt_row else '',
@@ -701,7 +724,7 @@ def process_mapping(source_file, target_file, services, threshold, keep_case, re
                     tgt_row.get('Example','') if tgt_row else ''
                 ]
                 
-                dest_field = '.'.join([lvl for lvl in tgt_row['levels'] if lvl]) if tgt_row else ''
+                dest_field = '.'.join([lvl for lvl in converted_tgt_levels if lvl])
                 ws.append(src_vals + [dest_field] + tgt_vals)
             
             # Prune unused source level columns
