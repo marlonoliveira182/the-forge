@@ -8,6 +8,35 @@ import base64
 import openpyxl
 import difflib
 from openpyxl.utils import get_column_letter
+import logging
+import sys
+from datetime import datetime
+
+# Configure logging to capture logs for frontend display
+class StreamlitHandler(logging.Handler):
+    def __init__(self):
+        super().__init__()
+        self.logs = []
+    
+    def emit(self, record):
+        log_entry = {
+            'timestamp': datetime.now().strftime('%H:%M:%S'),
+            'level': record.levelname,
+            'message': self.format(record)
+        }
+        self.logs.append(log_entry)
+        # Keep only last 100 logs to avoid memory issues
+        if len(self.logs) > 100:
+            self.logs = self.logs[-100:]
+
+# Create a global handler for frontend logging
+frontend_handler = StreamlitHandler()
+frontend_handler.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+logger.addHandler(frontend_handler)
 
 # Import the microservices
 from services.xsd_parser_service import XSDParser
@@ -386,9 +415,17 @@ def show_mapping_page(services):
         reorder_attributes = st.checkbox("Reorder Attributes First", value=False,
                                        help="Reorder attributes to appear before elements in each parent structure")
     
+    # Debug logging section
+    st.markdown("### 🔍 Debug Logs")
+    show_debug_logs = st.checkbox("Show Debug Logs", value=True, 
+                                 help="Display detailed debug logs to track execution")
+    
     # Generate mapping button
     if st.button("🚀 Generate Mapping", type="primary", use_container_width=True):
         if source_file and target_file:
+            # Clear previous logs
+            frontend_handler.logs.clear()
+            
             with st.spinner("🔄 Generating mapping..."):
                 try:
                     result = process_mapping(source_file, target_file, services, threshold, keep_case, reorder_attributes)
@@ -405,6 +442,21 @@ def show_mapping_page(services):
                         st.markdown('<div class="error-message">❌ Failed to generate mapping</div>', unsafe_allow_html=True)
                 except Exception as e:
                     st.markdown(f'<div class="error-message">❌ Error: {str(e)}</div>', unsafe_allow_html=True)
+            
+            # Display logs if enabled
+            if show_debug_logs and frontend_handler.logs:
+                st.markdown("### 📋 Execution Logs")
+                log_container = st.container()
+                with log_container:
+                    for log_entry in frontend_handler.logs:
+                        if log_entry['level'] == 'ERROR':
+                            st.error(f"[{log_entry['timestamp']}] {log_entry['message']}")
+                        elif log_entry['level'] == 'WARNING':
+                            st.warning(f"[{log_entry['timestamp']}] {log_entry['message']}")
+                        elif log_entry['level'] == 'DEBUG':
+                            st.info(f"[{log_entry['timestamp']}] {log_entry['message']}")
+                        else:
+                            st.text(f"[{log_entry['timestamp']}] {log_entry['message']}")
         else:
             st.markdown('<div class="warning-message">⚠️ Please upload both source and target schema files</div>', unsafe_allow_html=True)
 
@@ -435,8 +487,16 @@ def show_wsdl_to_xsd_page(services):
             except UnicodeDecodeError:
                 st.code(content[:500], language="text")
     
+    # Debug logging section
+    st.markdown("### 🔍 Debug Logs")
+    show_debug_logs = st.checkbox("Show Debug Logs", value=True, key="wsdl_logs",
+                                 help="Display detailed debug logs to track execution")
+    
     if st.button("🔧 Extract XSD", type="primary", use_container_width=True):
         if wsdl_file:
+            # Clear previous logs
+            frontend_handler.logs.clear()
+            
             with st.spinner("🔄 Extracting XSD..."):
                 try:
                     result = process_wsdl_to_xsd(wsdl_file, services)
@@ -453,6 +513,21 @@ def show_wsdl_to_xsd_page(services):
                         st.markdown('<div class="error-message">❌ Failed to extract XSD</div>', unsafe_allow_html=True)
                 except Exception as e:
                     st.markdown(f'<div class="error-message">❌ Error: {str(e)}</div>', unsafe_allow_html=True)
+            
+            # Display logs if enabled
+            if show_debug_logs and frontend_handler.logs:
+                st.markdown("### 📋 Execution Logs")
+                log_container = st.container()
+                with log_container:
+                    for log_entry in frontend_handler.logs:
+                        if log_entry['level'] == 'ERROR':
+                            st.error(f"[{log_entry['timestamp']}] {log_entry['message']}")
+                        elif log_entry['level'] == 'WARNING':
+                            st.warning(f"[{log_entry['timestamp']}] {log_entry['message']}")
+                        elif log_entry['level'] == 'DEBUG':
+                            st.info(f"[{log_entry['timestamp']}] {log_entry['message']}")
+                        else:
+                            st.text(f"[{log_entry['timestamp']}] {log_entry['message']}")
         else:
             st.markdown('<div class="warning-message">⚠️ Please upload a WSDL file</div>', unsafe_allow_html=True)
 
@@ -486,8 +561,16 @@ def show_schema_to_excel_page(services):
     keep_case = st.checkbox("Keep Original Case", value=False, key="schema_case",
                            help="Preserve original field names case")
     
+    # Debug logging section
+    st.markdown("### 🔍 Debug Logs")
+    show_debug_logs = st.checkbox("Show Debug Logs", value=True, key="schema_logs",
+                                 help="Display detailed debug logs to track execution")
+    
     if st.button("📋 Convert to Excel", type="primary", use_container_width=True):
         if schema_file:
+            # Clear previous logs
+            frontend_handler.logs.clear()
+            
             with st.spinner("🔄 Converting to Excel..."):
                 try:
                     result = process_schema_to_excel(schema_file, services, keep_case)
@@ -504,6 +587,21 @@ def show_schema_to_excel_page(services):
                         st.markdown('<div class="error-message">❌ Failed to generate Excel file</div>', unsafe_allow_html=True)
                 except Exception as e:
                     st.markdown(f'<div class="error-message">❌ Error: {str(e)}</div>', unsafe_allow_html=True)
+            
+            # Display logs if enabled
+            if show_debug_logs and frontend_handler.logs:
+                st.markdown("### 📋 Execution Logs")
+                log_container = st.container()
+                with log_container:
+                    for log_entry in frontend_handler.logs:
+                        if log_entry['level'] == 'ERROR':
+                            st.error(f"[{log_entry['timestamp']}] {log_entry['message']}")
+                        elif log_entry['level'] == 'WARNING':
+                            st.warning(f"[{log_entry['timestamp']}] {log_entry['message']}")
+                        elif log_entry['level'] == 'DEBUG':
+                            st.info(f"[{log_entry['timestamp']}] {log_entry['message']}")
+                        else:
+                            st.text(f"[{log_entry['timestamp']}] {log_entry['message']}")
         else:
             st.markdown('<div class="warning-message">⚠️ Please upload a schema file</div>', unsafe_allow_html=True)
 
@@ -559,15 +657,19 @@ def show_about_page():
 
 def process_mapping(source_file, target_file, services, threshold, keep_case, reorder_attributes=False):
     """Process schema mapping using exact v8 logic"""
+    logger.debug(f"Starting process_mapping with reorder_attributes={reorder_attributes}")
     try:
         # Create temporary files
+        logger.debug("Creating temporary files...")
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{source_file.name.split('.')[-1]}") as source_temp:
             source_temp.write(source_file.read())
             source_temp_path = source_temp.name
+            logger.debug(f"Created source temp file: {source_temp_path}")
         
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{target_file.name.split('.')[-1]}") as target_temp:
             target_temp.write(target_file.read())
             target_temp_path = target_temp.name
+            logger.debug(f"Created target temp file: {target_temp_path}")
         
         # --- v8 logic: parse source and target, multi-message, row matching, column structure ---
         
@@ -751,26 +853,37 @@ def process_mapping(source_file, target_file, services, threshold, keep_case, re
         
         # --- Attribute reordering if flag is set ---
         if reorder_attributes:
+            logger.debug("Starting attribute reordering process...")
             try:
                 from services.reorder_excel_attributes import reorder_attributes_in_excel
+                logger.debug("Successfully imported reorder_attributes_in_excel")
+                
                 # Save to temporary file for reordering
+                logger.debug("Creating temporary Excel file for reordering...")
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_excel:
                     output_buffer.seek(0)
                     temp_excel.write(output_buffer.getvalue())
                     temp_excel_path = temp_excel.name
+                    logger.debug(f"Created temp Excel file for reordering: {temp_excel_path}")
                 
+                logger.debug("Calling reorder_attributes_in_excel...")
                 reorder_attributes_in_excel(temp_excel_path)
+                logger.debug("reorder_attributes_in_excel completed successfully")
                 
                 # Read back the reordered file
+                logger.debug("Reading back the reordered file...")
                 with open(temp_excel_path, 'rb') as f:
                     output_buffer.seek(0)
                     output_buffer.write(f.read())
                     output_buffer.truncate()
                 
                 # Clean up temp reordering file
+                logger.debug("Cleaning up temp reordering file...")
                 os.unlink(temp_excel_path)
+                logger.debug("Attribute reordering completed successfully")
                 st.info("[INFO] Reordered attributes to appear first in each parent structure.")
             except Exception as e:
+                logger.error(f"Exception during attribute reordering: {e}", exc_info=True)
                 st.error(f"[ERROR] Failed to reorder attributes: {str(e)}")
                 # Continue without reordering rather than failing the entire process
         
@@ -782,6 +895,7 @@ def process_mapping(source_file, target_file, services, threshold, keep_case, re
         return output_buffer.getvalue()
         
     except Exception as e:
+        logger.error(f"Exception in process_mapping: {e}", exc_info=True)
         st.error(f"Error in mapping: {str(e)}")
         return None
 
