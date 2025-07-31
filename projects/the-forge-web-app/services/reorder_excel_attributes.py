@@ -75,7 +75,13 @@ def reorder_attributes_in_excel(excel_path):
                 top_level_keys = root_nodes
             # Flatten the tree
             new_data = []
-            for key in sorted(top_level_keys, key=lambda k: data_rows.index(node_map[k]['row']) if node_map[k]['row'] in data_rows else 0):
+            def safe_sort_key(k):
+                try:
+                    return data_rows.index(node_map[k]['row'])
+                except ValueError:
+                    return 0  # Default to beginning if row not found
+            
+            for key in sorted(top_level_keys, key=safe_sort_key):
                 new_data.extend(flatten_tree(key))
             # Clear old data rows
             ws.delete_rows(3, ws.max_row-2)
