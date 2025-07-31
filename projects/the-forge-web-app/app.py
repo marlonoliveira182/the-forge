@@ -5,6 +5,9 @@ import json
 import xml.etree.ElementTree as ET
 from io import BytesIO
 import base64
+import openpyxl
+import difflib
+from openpyxl.utils import get_column_letter
 
 # Import the microservices
 from services.xsd_parser_service import XSDParser
@@ -552,7 +555,7 @@ def show_about_page():
     """)
 
 def process_mapping(source_file, target_file, services, threshold, keep_case):
-    """Process schema mapping"""
+    """Process schema mapping using exact v8 logic"""
     try:
         # Create temporary files
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{source_file.name.split('.')[-1]}") as source_temp:
@@ -563,12 +566,156 @@ def process_mapping(source_file, target_file, services, threshold, keep_case):
             target_temp.write(target_file.read())
             target_temp_path = target_temp.name
         
-        # Generate mapping using the new v8-style mapping service
-        mapping_data = services['mapping_service'].generate_mapping_from_schemas(source_temp_path, target_temp_path)
+        # --- v8 logic: parse source and target, multi-message, row matching, column structure ---
         
-        # Create Excel file
+        XSD_NS = '{http://www.w3.org/2001/XMLSchema}'
+        parser = services['xsd_parser']
+        
+        # Parse source XSD
+        tree = ET.parse(source_temp_path)
+        root = tree.getroot()
+        simple_types = {}
+        for st in root.findall(f'.//{{http://www.w3.org/2001/XMLSchema}}simpleType'):
+            name = st.get('name')
+            if not name:
+                continue
+            restriction = st.find('{http://www.w3.org/2001/XMLSchema}restriction')
+            base = restriction.get('base') if restriction is not None else None
+            restrictions = {}
+            if restriction is not None:
+                for cons in restriction:
+                    cons_name = cons.tag.replace('{http://www.w3.org/2001/XMLSchema}', '')
+                    val = cons.get('value')
+                    if val:
+                        restrictions[cons_name] = val
+            simple_types[name] = {'base': base, 'restrictions': restrictions}
+        
+        complex_types = {ct.get('name'): ct for ct in root.findall(f'.//{{http://www.w3.org/2001/XMLSchema}}complexType') if ct.get('name')}
+        src_messages = {}
+        for elem in root.findall('{http://www.w3.org/2001/XMLSchema}element'):
+            name = elem.get('name')
+            if name:
+                rows = parser.parse_element(elem, complex_types, simple_types, 1, category='message')
+                src_messages[name] = rows
+        
+        # Parse target XSD (single sheet)
+        tgt_rows = []
+        if target_temp_path and os.path.exists(target_temp_path):
+            tgt_tree = ET.parse(target_temp_path)
+            tgt_root = tgt_tree.getroot()
+            tgt_simple_types = {}
+            for st in tgt_root.findall(f'.//{{http://www.w3.org/2001/XMLSchema}}simpleType'):
+                name = st.get('name')
+                if not name:
+                    continue
+                restriction = st.find('{http://www.w3.org/2001/XMLSchema}restriction')
+                base = restriction.get('base') if restriction is not None else None
+                restrictions = {}
+                if restriction is not None:
+                    for cons in restriction:
+                        cons_name = cons.tag.replace('{http://www.w3.org/2001/XMLSchema}', '')
+                        val = cons.get('value')
+                        if val:
+                            restrictions[cons_name] = val
+                tgt_simple_types[name] = {'base': base, 'restrictions': restrictions}
+            tgt_complex_types = {ct.get('name'): ct for ct in tgt_root.findall(f'.//{{http://www.w3.org/2001/XMLSchema}}complexType') if ct.get('name')}
+            for elem in tgt_root.findall('{http://www.w3.org/2001/XMLSchema}element'):
+                rows = parser.parse_element(elem, tgt_complex_types, tgt_simple_types, 1, category='message')
+                tgt_rows.extend(rows)
+        
+        # Build Excel file
+        wb = openpyxl.Workbook()
+        first = True
+        
+        for msg_name, src_full_rows in src_messages.items():
+            if not first:
+                ws = wb.create_sheet(title=msg_name[:31])  # Excel sheet name limit
+            else:
+                ws = wb.active
+                ws.title = msg_name[:31]
+                first = False
+            
+            max_src_level = max((len(row['levels']) for row in src_full_rows), default=1)
+            max_tgt_level = max((len(row['levels']) for row in tgt_rows), default=1) if tgt_rows else 1
+            
+            src_cols = [f'Level{i+1}_src' for i in range(max_src_level)] + ['Request Parameter_src', 'GDPR_src', 'Cardinality_src', 'Type_src', 'Base Type_src', 'Details_src', 'Description_src', 'Category_src', 'Example_src']
+            tgt_cols = [f'Level{i+1}_tgt' for i in range(max_tgt_level)] + ['Request Parameter_tgt', 'GDPR_tgt', 'Cardinality_tgt', 'Type_tgt', 'Base Type_tgt', 'Details_tgt', 'Description_tgt', 'Category_tgt', 'Example_tgt']
+            headers = src_cols + ['Destination Fields'] + tgt_cols
+            ws.append(headers)
+            ws.append([''] * len(headers))  # Second header row blank for now
+            
+            def row_path(row):
+                return '.'.join(row['levels'])
+            
+            tgt_path_dict = {row_path(row): row for row in tgt_rows}
+            tgt_paths = list(tgt_path_dict.keys())
+            
+            for src_row in src_full_rows:
+                src_levels = src_row['levels'] + [''] * (max_src_level - len(src_row['levels']))
+                src_vals = src_levels + [
+                    src_row.get('Request Parameter',''),
+                    src_row.get('GDPR',''),
+                    src_row.get('Cardinality',''),
+                    src_row.get('Type',''),
+                    src_row.get('Base Type',''),
+                    src_row.get('Details',''),
+                    src_row.get('Description',''),
+                    src_row.get('Category','element'),
+                    src_row.get('Example','')
+                ]
+                
+                src_path_str = row_path(src_row)
+                tgt_row = tgt_path_dict.get(src_path_str)
+                best_match = ''
+                if not tgt_row and tgt_paths:
+                    matches = difflib.get_close_matches(src_path_str, tgt_paths, n=1, cutoff=0.0)
+                    if matches:
+                        best_match = matches[0]
+                        tgt_row = tgt_path_dict[best_match]
+                
+                tgt_levels = tgt_row['levels'] + [''] * (max_tgt_level - len(tgt_row['levels'])) if tgt_row else ['']*max_tgt_level
+                tgt_vals = tgt_levels + [
+                    tgt_row.get('Request Parameter','') if tgt_row else '',
+                    tgt_row.get('GDPR','') if tgt_row else '',
+                    tgt_row.get('Cardinality','') if tgt_row else '',
+                    tgt_row.get('Type','') if tgt_row else '',
+                    tgt_row.get('Base Type','') if tgt_row else '',
+                    tgt_row.get('Details','') if tgt_row else '',
+                    tgt_row.get('Description','') if tgt_row else '',
+                    tgt_row.get('Category','element') if tgt_row else '',
+                    tgt_row.get('Example','') if tgt_row else ''
+                ]
+                
+                dest_field = '.'.join([lvl for lvl in tgt_row['levels'] if lvl]) if tgt_row else ''
+                ws.append(src_vals + [dest_field] + tgt_vals)
+            
+            # Prune unused source level columns
+            def last_nonempty_level_col(start_col, num_levels):
+                for col in range(start_col + max_src_level - 1, start_col - 1, -1):
+                    for row in ws.iter_rows(min_row=3, min_col=col, max_col=col):
+                        if any(cell.value not in (None, '') for cell in row):
+                            return col
+                return start_col - 1
+            
+            src_level_start = 1
+            last_src_col = last_nonempty_level_col(src_level_start, max_src_level)
+            for col in range(src_level_start + max_src_level - 1, last_src_col, -1):
+                ws.delete_cols(col)
+            
+            header_row = [cell.value for cell in ws[1]]
+            try:
+                tgt_level_start = header_row.index('Level1_tgt') + 1
+            except ValueError:
+                tgt_level_start = len(header_row) + 1
+            
+            for col in range(tgt_level_start + max_tgt_level - 1, tgt_level_start - 1, -1):
+                col_letter = get_column_letter(col)
+                if col > tgt_level_start and all((ws.cell(row=row, column=col).value in (None, '')) for row in range(3, ws.max_row + 1)):
+                    ws.delete_cols(col)
+        
+        # Save to buffer
         output_buffer = BytesIO()
-        services['excel_exporter'].export({'mapping': mapping_data}, output_buffer)
+        wb.save(output_buffer)
         
         # Clean up temp files
         os.unlink(source_temp_path)
