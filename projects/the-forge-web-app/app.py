@@ -446,49 +446,61 @@ def show_mapping_page(services):
             
             # Display logs if enabled
             if show_debug_logs and frontend_handler.logs:
-                st.markdown("### 📋 Execution Logs")
+                # Create a clean white panel with scroll bar
+                log_html = """
+                <div style="
+                    max-height: 250px; 
+                    overflow-y: auto; 
+                    border: 2px solid #e9ecef; 
+                    border-radius: 12px; 
+                    padding: 16px; 
+                    background-color: white;
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    font-size: 13px;
+                    line-height: 1.5;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                    margin-top: 16px;
+                ">
+                """
                 
-                # Create a scrollable container with fixed height
-                log_container = st.container()
-                with log_container:
-                    # Use HTML to create a scrollable div with fixed height
-                    log_html = """
+                for log_entry in frontend_handler.logs:
+                    timestamp = log_entry['timestamp']
+                    message = log_entry['message']
+                    level = log_entry['level']
+                    
+                    # Color code based on log level with better styling
+                    if level == 'ERROR':
+                        color = '#dc3545'
+                        icon = '❌'
+                        bg_color = '#fff5f5'
+                    elif level == 'WARNING':
+                        color = '#ffc107'
+                        icon = '⚠️'
+                        bg_color = '#fffbf0'
+                    elif level == 'DEBUG':
+                        color = '#17a2b8'
+                        icon = '🔍'
+                        bg_color = '#f0f8ff'
+                    else:
+                        color = '#6c757d'
+                        icon = 'ℹ️'
+                        bg_color = '#f8f9fa'
+                    
+                    log_html += f'''
                     <div style="
-                        max-height: 300px; 
-                        overflow-y: auto; 
-                        border: 1px solid #e0e0e0; 
-                        border-radius: 8px; 
-                        padding: 10px; 
-                        background-color: #f8f9fa;
-                        font-family: 'Courier New', monospace;
-                        font-size: 12px;
-                        line-height: 1.4;
+                        margin-bottom: 8px; 
+                        padding: 8px 12px; 
+                        background-color: {bg_color}; 
+                        border-radius: 6px; 
+                        border-left: 4px solid {color};
                     ">
-                    """
-                    
-                    for log_entry in frontend_handler.logs:
-                        timestamp = log_entry['timestamp']
-                        message = log_entry['message']
-                        level = log_entry['level']
-                        
-                        # Color code based on log level
-                        if level == 'ERROR':
-                            color = '#dc3545'
-                            icon = '❌'
-                        elif level == 'WARNING':
-                            color = '#ffc107'
-                            icon = '⚠️'
-                        elif level == 'DEBUG':
-                            color = '#17a2b8'
-                            icon = '🔍'
-                        else:
-                            color = '#6c757d'
-                            icon = 'ℹ️'
-                        
-                        log_html += f'<div style="margin-bottom: 4px;"><span style="color: {color}; font-weight: bold;">{icon} [{timestamp}]</span> <span style="color: #333;">{message}</span></div>'
-                    
-                    log_html += "</div>"
-                    st.markdown(log_html, unsafe_allow_html=True)
+                        <span style="color: {color}; font-weight: 600; font-size: 14px;">{icon} [{timestamp}]</span>
+                        <span style="color: #495057; margin-left: 8px;">{message}</span>
+                    </div>
+                    '''
+                
+                log_html += "</div>"
+                st.markdown(log_html, unsafe_allow_html=True)
         else:
             st.markdown('<div class="warning-message">⚠️ Please upload both source and target schema files</div>', unsafe_allow_html=True)
 
@@ -549,49 +561,61 @@ def show_wsdl_to_xsd_page(services):
             
             # Display logs if enabled
             if show_debug_logs and frontend_handler.logs:
-                st.markdown("### 📋 Execution Logs")
+                # Create a clean white panel with scroll bar
+                log_html = """
+                <div style="
+                    max-height: 250px; 
+                    overflow-y: auto; 
+                    border: 2px solid #e9ecef; 
+                    border-radius: 12px; 
+                    padding: 16px; 
+                    background-color: white;
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    font-size: 13px;
+                    line-height: 1.5;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                    margin-top: 16px;
+                ">
+                """
                 
-                # Create a scrollable container with fixed height
-                log_container = st.container()
-                with log_container:
-                    # Use HTML to create a scrollable div with fixed height
-                    log_html = """
+                for log_entry in frontend_handler.logs:
+                    timestamp = log_entry['timestamp']
+                    message = log_entry['message']
+                    level = log_entry['level']
+                    
+                    # Color code based on log level with better styling
+                    if level == 'ERROR':
+                        color = '#dc3545'
+                        icon = '❌'
+                        bg_color = '#fff5f5'
+                    elif level == 'WARNING':
+                        color = '#ffc107'
+                        icon = '⚠️'
+                        bg_color = '#fffbf0'
+                    elif level == 'DEBUG':
+                        color = '#17a2b8'
+                        icon = '🔍'
+                        bg_color = '#f0f8ff'
+                    else:
+                        color = '#6c757d'
+                        icon = 'ℹ️'
+                        bg_color = '#f8f9fa'
+                    
+                    log_html += f'''
                     <div style="
-                        max-height: 300px; 
-                        overflow-y: auto; 
-                        border: 1px solid #e0e0e0; 
-                        border-radius: 8px; 
-                        padding: 10px; 
-                        background-color: #f8f9fa;
-                        font-family: 'Courier New', monospace;
-                        font-size: 12px;
-                        line-height: 1.4;
+                        margin-bottom: 8px; 
+                        padding: 8px 12px; 
+                        background-color: {bg_color}; 
+                        border-radius: 6px; 
+                        border-left: 4px solid {color};
                     ">
-                    """
-                    
-                    for log_entry in frontend_handler.logs:
-                        timestamp = log_entry['timestamp']
-                        message = log_entry['message']
-                        level = log_entry['level']
-                        
-                        # Color code based on log level
-                        if level == 'ERROR':
-                            color = '#dc3545'
-                            icon = '❌'
-                        elif level == 'WARNING':
-                            color = '#ffc107'
-                            icon = '⚠️'
-                        elif level == 'DEBUG':
-                            color = '#17a2b8'
-                            icon = '🔍'
-                        else:
-                            color = '#6c757d'
-                            icon = 'ℹ️'
-                        
-                        log_html += f'<div style="margin-bottom: 4px;"><span style="color: {color}; font-weight: bold;">{icon} [{timestamp}]</span> <span style="color: #333;">{message}</span></div>'
-                    
-                    log_html += "</div>"
-                    st.markdown(log_html, unsafe_allow_html=True)
+                        <span style="color: {color}; font-weight: 600; font-size: 14px;">{icon} [{timestamp}]</span>
+                        <span style="color: #495057; margin-left: 8px;">{message}</span>
+                    </div>
+                    '''
+                
+                log_html += "</div>"
+                st.markdown(log_html, unsafe_allow_html=True)
         else:
             st.markdown('<div class="warning-message">⚠️ Please upload a WSDL file</div>', unsafe_allow_html=True)
 
@@ -655,49 +679,61 @@ def show_schema_to_excel_page(services):
             
             # Display logs if enabled
             if show_debug_logs and frontend_handler.logs:
-                st.markdown("### 📋 Execution Logs")
+                # Create a clean white panel with scroll bar
+                log_html = """
+                <div style="
+                    max-height: 250px; 
+                    overflow-y: auto; 
+                    border: 2px solid #e9ecef; 
+                    border-radius: 12px; 
+                    padding: 16px; 
+                    background-color: white;
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    font-size: 13px;
+                    line-height: 1.5;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                    margin-top: 16px;
+                ">
+                """
                 
-                # Create a scrollable container with fixed height
-                log_container = st.container()
-                with log_container:
-                    # Use HTML to create a scrollable div with fixed height
-                    log_html = """
+                for log_entry in frontend_handler.logs:
+                    timestamp = log_entry['timestamp']
+                    message = log_entry['message']
+                    level = log_entry['level']
+                    
+                    # Color code based on log level with better styling
+                    if level == 'ERROR':
+                        color = '#dc3545'
+                        icon = '❌'
+                        bg_color = '#fff5f5'
+                    elif level == 'WARNING':
+                        color = '#ffc107'
+                        icon = '⚠️'
+                        bg_color = '#fffbf0'
+                    elif level == 'DEBUG':
+                        color = '#17a2b8'
+                        icon = '🔍'
+                        bg_color = '#f0f8ff'
+                    else:
+                        color = '#6c757d'
+                        icon = 'ℹ️'
+                        bg_color = '#f8f9fa'
+                    
+                    log_html += f'''
                     <div style="
-                        max-height: 300px; 
-                        overflow-y: auto; 
-                        border: 1px solid #e0e0e0; 
-                        border-radius: 8px; 
-                        padding: 10px; 
-                        background-color: #f8f9fa;
-                        font-family: 'Courier New', monospace;
-                        font-size: 12px;
-                        line-height: 1.4;
+                        margin-bottom: 8px; 
+                        padding: 8px 12px; 
+                        background-color: {bg_color}; 
+                        border-radius: 6px; 
+                        border-left: 4px solid {color};
                     ">
-                    """
-                    
-                    for log_entry in frontend_handler.logs:
-                        timestamp = log_entry['timestamp']
-                        message = log_entry['message']
-                        level = log_entry['level']
-                        
-                        # Color code based on log level
-                        if level == 'ERROR':
-                            color = '#dc3545'
-                            icon = '❌'
-                        elif level == 'WARNING':
-                            color = '#ffc107'
-                            icon = '⚠️'
-                        elif level == 'DEBUG':
-                            color = '#17a2b8'
-                            icon = '🔍'
-                        else:
-                            color = '#6c757d'
-                            icon = 'ℹ️'
-                        
-                        log_html += f'<div style="margin-bottom: 4px;"><span style="color: {color}; font-weight: bold;">{icon} [{timestamp}]</span> <span style="color: #333;">{message}</span></div>'
-                    
-                    log_html += "</div>"
-                    st.markdown(log_html, unsafe_allow_html=True)
+                        <span style="color: {color}; font-weight: 600; font-size: 14px;">{icon} [{timestamp}]</span>
+                        <span style="color: #495057; margin-left: 8px;">{message}</span>
+                    </div>
+                    '''
+                
+                log_html += "</div>"
+                st.markdown(log_html, unsafe_allow_html=True)
         else:
             st.markdown('<div class="warning-message">⚠️ Please upload a schema file</div>', unsafe_allow_html=True)
 
