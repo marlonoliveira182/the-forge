@@ -20,7 +20,7 @@ from services.case_converter_service import pascal_to_camel, camel_to_pascal
 # Page configuration
 st.set_page_config(
     page_title="The Forge - Schema Transformation Tool",
-    page_icon="🔧",
+    page_icon="assets/anvil.ico",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -212,18 +212,7 @@ st.markdown("""
         border: none;
     }
     
-    /* Current Page Indicator */
-    .current-page-indicator {
-        background: #2d2d2d;
-        color: #ff6b35;
-        padding: 0.5rem 0.75rem;
-        border-radius: 6px;
-        font-weight: 500;
-        text-align: center;
-        margin: 1rem 0;
-        font-size: 0.8rem;
-        border: 1px solid #444444;
-    }
+
     
     /* Footer Section */
     .sidebar-footer {
@@ -326,6 +315,8 @@ def main():
     
     # Home Button
     home_active = st.session_state.current_page == "🏠 Home"
+    if home_active:
+        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_home"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
     if st.sidebar.button("🏠 Home", use_container_width=True, key="nav_home"):
         st.session_state.current_page = "🏠 Home"
     
@@ -336,16 +327,22 @@ def main():
     
     # Schema Mapping
     mapping_active = st.session_state.current_page == "📊 Schema Mapping"
+    if mapping_active:
+        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_mapping"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
     if st.sidebar.button("📊 Schema Mapping", use_container_width=True, key="nav_mapping"):
         st.session_state.current_page = "📊 Schema Mapping"
     
     # WSDL to XSD
     wsdl_active = st.session_state.current_page == "🔧 WSDL to XSD"
+    if wsdl_active:
+        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_wsdl"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
     if st.sidebar.button("🔧 WSDL to XSD", use_container_width=True, key="nav_wsdl"):
         st.session_state.current_page = "🔧 WSDL to XSD"
     
     # Schema to Excel
     excel_active = st.session_state.current_page == "📋 Schema to Excel"
+    if excel_active:
+        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_excel"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
     if st.sidebar.button("📋 Schema to Excel", use_container_width=True, key="nav_excel"):
         st.session_state.current_page = "📋 Schema to Excel"
     
@@ -356,11 +353,10 @@ def main():
     
     # About
     about_active = st.session_state.current_page == "ℹ️ About"
+    if about_active:
+        st.sidebar.markdown('<style>.sidebar .stButton > button[key="nav_about"] { background: #ff6b35 !important; color: #ffffff !important; font-weight: 500 !important; box-shadow: 0 0 10px rgba(255, 107, 53, 0.3) !important; }</style>', unsafe_allow_html=True)
     if st.sidebar.button("ℹ️ About", use_container_width=True, key="nav_about"):
         st.session_state.current_page = "ℹ️ About"
-    
-    # Current Page Indicator
-    st.sidebar.markdown(f'<div class="current-page-indicator">📍 {st.session_state.current_page}</div>', unsafe_allow_html=True)
     
     # Footer
     st.sidebar.markdown("""
