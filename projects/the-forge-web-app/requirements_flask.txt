@@ -1,0 +1,5 @@
+flask==2.3.3
+openpyxl==3.1.2
+jsonschema==4.17.3
+# Using built-in xml.etree.ElementTree instead of lxml
+# Removed pandas to avoid compilation issues 
