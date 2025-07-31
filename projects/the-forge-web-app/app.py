@@ -510,29 +510,26 @@ def show_mapping_page(services):
     st.markdown("### ⚙️ Settings")
     col1, col2, col3 = st.columns(3)
     with col1:
-        threshold = st.slider("Similarity Threshold", 0.0, 1.0, 0.7, 0.1, 
-                            help="Minimum similarity score for automatic field matching")
-    with col2:
         source_case = st.selectbox("Source Case", ["Original", "PascalCase", "camelCase"], 
                                   help="Convert source field names to specified case")
-    with col3:
+    with col2:
         target_case = st.selectbox("Target Case", ["Original", "PascalCase", "camelCase"], 
                                   help="Convert target field names to specified case")
+    with col3:
+        min_match_threshold = st.slider("Minimum Match %", 0, 100, 50, 5,
+                                       help="Minimum percentage of fields that must match to generate mapping")
     
     col4, col5 = st.columns(2)
     with col4:
         reorder_attributes = st.checkbox("Reorder Attributes First", value=False,
                                        help="Reorder attributes to appear before elements in each parent structure")
-    with col5:
-        min_match_threshold = st.slider("Minimum Match %", 10, 50, 20, 5,
-                                       help="Minimum percentage of fields that must match to generate mapping")
     
     # Generate mapping button
     if st.button("🚀 Generate Mapping", type="primary", use_container_width=True):
         if source_file and target_file:
             with st.spinner("🔄 Generating mapping..."):
                 try:
-                    result = process_mapping(source_file, target_file, services, threshold, source_case, target_case, reorder_attributes, min_match_threshold)
+                    result = process_mapping(source_file, target_file, services, source_case, target_case, reorder_attributes, min_match_threshold)
                     if result:
                         st.markdown('<div class="success-message">✅ Mapping generated successfully!</div>', unsafe_allow_html=True)
                         st.download_button(
@@ -701,7 +698,7 @@ def show_about_page():
     Based on The Forge v8 Desktop Application
     """)
 
-def process_mapping(source_file, target_file, services, threshold, source_case="Original", target_case="Original", reorder_attributes=False, min_match_threshold=20):
+def process_mapping(source_file, target_file, services, source_case="Original", target_case="Original", reorder_attributes=False, min_match_threshold=50):
     try:
         # Create temporary files
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{source_file.name.split('.')[-1]}") as source_temp:
