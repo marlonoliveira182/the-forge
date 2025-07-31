@@ -516,7 +516,7 @@ def show_mapping_page(services):
         target_case = st.selectbox("Target Case", ["Original", "PascalCase", "camelCase"], 
                                   help="Convert target field names to specified case")
     with col3:
-        min_match_threshold = st.slider("Minimum Match %", 0, 100, 50, 5,
+        min_match_threshold = st.slider("Minimum Match %", 0, 100, 20, 5,
                                        help="Minimum percentage of fields that must match to generate mapping")
     
     col4, col5 = st.columns(2)
@@ -698,7 +698,7 @@ def show_about_page():
     Based on The Forge v8 Desktop Application
     """)
 
-def process_mapping(source_file, target_file, services, source_case="Original", target_case="Original", reorder_attributes=False, min_match_threshold=50):
+def process_mapping(source_file, target_file, services, source_case="Original", target_case="Original", reorder_attributes=False, min_match_threshold=20):
     try:
         # Create temporary files
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{source_file.name.split('.')[-1]}") as source_temp:
