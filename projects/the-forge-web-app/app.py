@@ -1317,17 +1317,17 @@ def process_mapping(source_file, target_file, services, source_case="Original", 
         
         if both_json_schemas:
             # For JSON Schema to JSON Schema mapping, use single sheet approach
-            return _process_json_schema_mapping(src_rows, tgt_rows, source_case, target_case, min_match_threshold)
+            return _process_json_schema_mapping(src_rows, tgt_rows, source_case, target_case, min_match_threshold, source_temp_path, target_temp_path)
         else:
             # For XSD or mixed schema mapping, use multi-sheet approach
-            return _process_mixed_schema_mapping(src_rows, tgt_rows, source_case, target_case, reorder_attributes, min_match_threshold)
+            return _process_mixed_schema_mapping(src_rows, tgt_rows, source_case, target_case, reorder_attributes, min_match_threshold, source_temp_path, target_temp_path)
         
     except Exception as e:
         st.error(f"Error in mapping: {str(e)}")
         return None
 
 
-def _process_json_schema_mapping(src_rows, tgt_rows, source_case, target_case, min_match_threshold):
+def _process_json_schema_mapping(src_rows, tgt_rows, source_case, target_case, min_match_threshold, source_temp_path=None, target_temp_path=None):
     """
     Process JSON Schema to JSON Schema mapping using single sheet approach.
     Respects JSON schema logic including restrictions, cardinalities, etc.
@@ -1502,9 +1502,9 @@ def _process_json_schema_mapping(src_rows, tgt_rows, source_case, target_case, m
         wb.save(output_buffer)
         
         # Clean up temp files
-        if 'source_temp_path' in locals():
+        if source_temp_path and os.path.exists(source_temp_path):
             os.unlink(source_temp_path)
-        if 'target_temp_path' in locals():
+        if target_temp_path and os.path.exists(target_temp_path):
             os.unlink(target_temp_path)
         
         output_buffer.seek(0)
@@ -1519,7 +1519,7 @@ def _process_json_schema_mapping(src_rows, tgt_rows, source_case, target_case, m
         return None
 
 
-def _process_mixed_schema_mapping(src_rows, tgt_rows, source_case, target_case, reorder_attributes, min_match_threshold):
+def _process_mixed_schema_mapping(src_rows, tgt_rows, source_case, target_case, reorder_attributes, min_match_threshold, source_temp_path=None, target_temp_path=None):
     """
     Process mixed schema mapping (XSD, JSON Schema, or mixed) using multi-sheet approach.
     This is the original logic for handling XSD and mixed schema types.
@@ -1825,9 +1825,9 @@ def _process_mixed_schema_mapping(src_rows, tgt_rows, source_case, target_case, 
                 # Continue without reordering rather than failing the entire process
         
         # Clean up temp files
-        if 'source_temp_path' in locals():
+        if source_temp_path and os.path.exists(source_temp_path):
             os.unlink(source_temp_path)
-        if 'target_temp_path' in locals():
+        if target_temp_path and os.path.exists(target_temp_path):
             os.unlink(target_temp_path)
         
         output_buffer.seek(0)
