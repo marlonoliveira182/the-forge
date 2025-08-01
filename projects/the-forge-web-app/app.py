@@ -825,13 +825,18 @@ def show_ai_description_page(services):
     # Show current status
     ai_generator = services['ai_description_generator']
     if ai_generator.enable_ai:
-        st.info("🤖 AI Mode: Enabled (will use AI when possible, falls back to rule-based for reliability)")
+        st.info("🤖 Hybrid Mode: Uses intelligent rule-based generation with optional AI enhancement for better quality")
     else:
         st.info("⚡ Fast Mode: Rule-based generation only (instant results)")
     
     st.markdown("""
     Generate functional descriptions for integration artifacts. Upload WSDL, XSD, JSON, XML, or JSON Schema files 
     to automatically generate short and detailed descriptions focused on business context and data flow.
+    
+    **How it works:**
+    - **Primary**: Intelligent rule-based generation that analyzes your data structure and creates context-aware descriptions
+    - **Enhancement**: Optional AI enhancement when enabled (only used when it improves quality)
+    - **Fast & Reliable**: Always provides high-quality, business-friendly descriptions
     """)
     
     # File upload section

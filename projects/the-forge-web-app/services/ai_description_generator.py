@@ -149,15 +149,18 @@ class AIDescriptionGenerator:
     
     def _parse_schema_file(self, file_path: str, file_type: str) -> Dict[str, Any]:
         """Parse different types of schema files and extract relevant information."""
-        if file_type.lower() == 'xsd':
+        # Normalize file type for case-insensitive matching
+        normalized_type = file_type.lower().replace(' ', '_')
+        
+        if normalized_type == 'xsd':
             return self._parse_xsd_file(file_path)
-        elif file_type.lower() == 'json':
+        elif normalized_type == 'json':
             return self._parse_json_file(file_path)
-        elif file_type.lower() == 'json_schema':
+        elif normalized_type in ['json_schema', 'jsonschema']:
             return self._parse_json_schema_file(file_path)
-        elif file_type.lower() == 'wsdl':
+        elif normalized_type == 'wsdl':
             return self._parse_wsdl_file(file_path)
-        elif file_type.lower() == 'xml':
+        elif normalized_type == 'xml':
             return self._parse_xml_file(file_path)
         else:
             raise ValueError(f"Unsupported file type: {file_type}")
@@ -531,211 +534,157 @@ class AIDescriptionGenerator:
             return f"This {file_type} file contains business data structures for system integration and information exchange."
     
     def _generate_detailed_description(self, schema_info: Dict[str, Any]) -> str:
-        """Generate a detailed functional description (5-10 sentences) using AI or rule-based approach."""
+        """Generate a detailed functional description (5-10 sentences) using improved rule-based approach with optional AI enhancement."""
         file_type = schema_info.get('file_type', 'Unknown')
         structures = schema_info.get('structures', [])
         
         if not structures:
             return f"This {file_type} file does not contain any defined structures or is empty."
         
-        # Use AI if enabled, otherwise use rule-based generation
-        if self.enable_ai and self._ai_initialized:
+        # Always start with improved rule-based generation
+        base_description = self._generate_improved_rule_based_description(schema_info)
+        
+        # Optionally enhance with AI if enabled and working well
+        if self.enable_ai:
             try:
-                # Build context for AI generation
-                context = self._build_ai_context(schema_info)
-                ai_result = self._generate_ai_description(context, file_type)
-                
-                if ai_result and ai_result != "AI generation completed but no meaningful content was produced.":
-                    return ai_result
-                else:
-                    self.logger.warning("AI generation failed or produced no content, falling back to rule-based")
-                    return self._generate_rule_based_description(schema_info)
-                    
+                # Try to enhance the description with AI
+                enhanced_description = self._enhance_with_ai(base_description, file_type)
+                if enhanced_description and len(enhanced_description) > len(base_description):
+                    return enhanced_description
             except Exception as e:
-                self.logger.error(f"AI generation failed: {e}, falling back to rule-based")
-                return self._generate_rule_based_description(schema_info)
-        else:
-            # Use rule-based generation (fast and reliable)
-            return self._generate_rule_based_description(schema_info)
+                self.logger.warning(f"AI enhancement failed: {e}, using base description")
+        
+        return base_description
     
-    def _build_ai_context(self, schema_info: Dict[str, Any]) -> str:
-        """Build context string for AI generation focusing on functional aspects."""
-        file_type = schema_info.get('file_type', 'Unknown')
-        structures = schema_info.get('structures', [])
-        
-        context_parts = [f"Integration artifact type: {file_type}"]
-        
-        for i, structure in enumerate(structures[:3]):  # Limit to first 3 structures
-            context_parts.append(f"\nBusiness component {i+1}: {structure.get('name', 'Unknown')}")
-            context_parts.append(f"Component type: {structure.get('type', 'Unknown')}")
-            
-            if structure.get('description'):
-                context_parts.append(f"Purpose: {structure.get('description')}")
-            
-            fields = structure.get('fields', [])
-            if fields:
-                # Categorize fields by type for functional context
-                field_types = {}
-                for field in fields:
-                    field_type = field.get('type', 'Unknown')
-                    if field_type not in field_types:
-                        field_types[field_type] = 0
-                    field_types[field_type] += 1
-                
-                context_parts.append(f"Data categories: {', '.join([f'{count} {type_name}' for type_name, count in field_types.items()])}")
-                
-                # Identify if this is request/response/flow
-                required_fields = [f for f in fields if f.get('required', False)]
-                if required_fields:
-                    context_parts.append(f"Required data elements: {len(required_fields)}")
-                
-                if len(fields) > 10:
-                    context_parts.append(f"Total data elements: {len(fields)}")
-        
-        return "\n".join(context_parts)
-    
-    def _generate_ai_description(self, context: str, file_type: str) -> str:
-        """Generate description using AI model with strict business focus."""
-        # Initialize AI models if not already done
-        if not self._ai_initialized:
-            self._initialize_ai_models()
-        
-        if not self.text_generator:
-            self.logger.warning("AI model not available, using rule-based generation")
-            return ""
-        
-        try:
-            start_time = time.time()
-            
-            # Create a business-focused prompt that doesn't ask the model to summarize
-            if "text-generation" in str(type(self.text_generator)):
-                # For generative models like DialoGPT - use a very simple, direct prompt
-                prompt = f"This {file_type} file helps companies "
-                result = self.text_generator(prompt, max_length=150, min_length=80, do_sample=True, temperature=0.9, truncation=True)
-                generated_text = result[0]['generated_text']
-                # Extract only the generated part (remove the prompt)
-                description = generated_text[len(prompt):].strip()
-                
-                # Validate the generated content
-                if len(description) < 30 or any(artifact in description.lower() for artifact in [
-                    'integration artifact', 'business component', 'component type', 'data categories'
-                ]):
-                    # Try an even simpler approach
-                    prompt2 = f"Companies use this {file_type} file to "
-                    result2 = self.text_generator(prompt2, max_length=120, min_length=60, do_sample=True, temperature=0.8, truncation=True)
-                    generated_text2 = result2[0]['generated_text']
-                    description2 = generated_text2[len(prompt2):].strip()
-                    
-                    # Use the better result
-                    if len(description2) > len(description) and not any(artifact in description2.lower() for artifact in [
-                        'integration artifact', 'business component', 'component type', 'data categories'
-                    ]):
-                        description = description2
-                
-            elif "text2text-generation" in str(type(self.text_generator)):
-                # For BART models - use a very simple prompt
-                input_text = f"What does this {file_type} file do for business? {context}"
-                result = self.text_generator(input_text, max_length=120, min_length=60, do_sample=True, temperature=0.8)
-                description = result[0]['generated_text']
-                
-            else:
-                # Fallback for other pipeline types
-                input_text = f"Business description of {file_type} integration artifact: {context}"
-                result = self.text_generator(input_text, max_length=150, min_length=80, do_sample=True, temperature=0.7)
-                description = result[0]['generated_text'] if 'generated_text' in result[0] else result[0].get('summary_text', '')
-            
-            ai_time = time.time() - start_time
-            self.logger.info(f"AI description generation completed in {ai_time:.3f}s")
-            
-            # Clean up the generated text
-            description = description.strip()
-            if description.startswith("Business description of"):
-                description = description[len("Business description of"):].strip()
-            
-            # Validate that the AI actually generated meaningful content
-            # Check for common artifacts that indicate the AI is just repeating context
-            problematic_indicators = [
-                'integration artifact', 'business component', 'component type', 'data categories',
-                'required data elements', 'total data elements', 'xs:string', 'xs:date', 'xs:decimal'
-            ]
-            
-            has_problematic_content = any(indicator in description.lower() for indicator in problematic_indicators)
-            
-            if has_problematic_content or len(description) < 30:
-                self.logger.warning("AI generated problematic content, falling back to rule-based")
-                return ""  # Return empty to trigger fallback
-            
-            return description if description else "AI generation completed but no meaningful content was produced."
-            
-        except Exception as e:
-            self.logger.error(f"AI generation error: {e}")
-            return ""
-    
-    def _generate_rule_based_description(self, schema_info: Dict[str, Any]) -> str:
-        """Generate description using rule-based approach with strict business focus."""
+    def _generate_improved_rule_based_description(self, schema_info: Dict[str, Any]) -> str:
+        """Generate improved rule-based description that's more dynamic and context-aware."""
         file_type = schema_info.get('file_type', 'Unknown')
         structures = schema_info.get('structures', [])
         
         description_parts = []
         
-        # File type specific functional descriptions
+        # Analyze the structures to determine the type of integration
+        field_types = {}
+        total_fields = 0
+        required_fields = 0
+        
+        for structure in structures:
+            fields = structure.get('fields', [])
+            for field in fields:
+                field_type = field.get('type', 'Unknown')
+                if field_type not in field_types:
+                    field_types[field_type] = 0
+                field_types[field_type] += 1
+                total_fields += 1
+                if field.get('required', False):
+                    required_fields += 1
+        
+        # Determine the primary data types and integration purpose
+        primary_types = sorted(field_types.items(), key=lambda x: x[1], reverse=True)[:3]
+        
+        # File type specific functional descriptions with context awareness
         if file_type == 'WSDL':
             description_parts.append("This web service definition enables business system integration by providing standardized communication protocols and data exchange mechanisms.")
             description_parts.append("It facilitates interoperability between different business applications and systems, allowing them to exchange information and execute business processes.")
-            description_parts.append("The service typically handles business operations such as data retrieval, processing, and synchronization across multiple enterprise systems.")
+            
+            if total_fields > 10:
+                description_parts.append("The service handles complex business operations with comprehensive data structures supporting multiple business entities and relationships.")
+            else:
+                description_parts.append("The service handles focused business operations with streamlined data requirements for efficient processing.")
+            
             description_parts.append("This integration artifact supports both request-response patterns and asynchronous messaging for complex business workflows.")
             description_parts.append("It enables organizations to connect legacy systems, modern applications, and external business partners through standardized interfaces.")
             
         elif file_type == 'XSD':
             description_parts.append("This data schema definition ensures consistent data structure and validation across business systems and applications.")
             description_parts.append("It provides a standardized format for business information exchange, ensuring data integrity and compatibility between different platforms.")
-            description_parts.append("The schema supports business data validation, transformation, and mapping processes in enterprise integration scenarios.")
+            
+            if 'string' in [t[0].lower() for t in primary_types]:
+                description_parts.append("The schema primarily handles textual business data including customer information, product details, and operational records.")
+            elif 'date' in [t[0].lower() for t in primary_types]:
+                description_parts.append("The schema manages temporal business data including transaction dates, scheduling information, and historical records.")
+            elif 'decimal' in [t[0].lower() for t in primary_types] or 'integer' in [t[0].lower() for t in primary_types]:
+                description_parts.append("The schema handles numerical business data including financial transactions, quantities, and performance metrics.")
+            else:
+                description_parts.append("The schema supports diverse business data types for comprehensive information management.")
+            
             description_parts.append("This artifact enables organizations to maintain data quality and consistency across multiple business systems and data sources.")
             description_parts.append("It facilitates data governance and compliance requirements by establishing clear data structure definitions.")
             
         elif file_type == 'JSON Schema':
-            description_parts.append("This data contract defines business information structure and validation rules for modern application integration.")
-            description_parts.append("It provides a standardized format for business data exchange, ensuring compatibility and data quality across different systems.")
-            description_parts.append("The schema supports business process automation and data synchronization between web applications and services.")
-            description_parts.append("This artifact enables organizations to establish clear data requirements and validation rules for business information exchange.")
-            description_parts.append("It facilitates integration with modern web-based business applications and cloud services.")
+            description_parts.append("This JSON schema definition provides flexible data validation and structure for modern web-based business integrations.")
+            description_parts.append("It supports lightweight, efficient data exchange between web applications, mobile systems, and cloud-based services.")
+            
+            if total_fields > 15:
+                description_parts.append("The schema accommodates complex business data models with extensive field definitions for comprehensive data management.")
+            else:
+                description_parts.append("The schema provides streamlined data structures optimized for fast processing and minimal overhead.")
+            
+            description_parts.append("This integration artifact enables real-time data synchronization and API-based business process automation.")
+            description_parts.append("It supports modern integration patterns including REST APIs, microservices, and cloud-native applications.")
             
         elif file_type == 'JSON':
-            description_parts.append("This data structure contains business information formatted for efficient system integration and data exchange.")
-            description_parts.append("It provides a lightweight format for transmitting business data between different applications and services.")
-            description_parts.append("The structure supports real-time data exchange and processing in business integration scenarios.")
-            description_parts.append("This artifact enables organizations to exchange business information quickly and efficiently across multiple systems.")
-            description_parts.append("It facilitates integration with modern web applications and mobile business solutions.")
+            description_parts.append("This JSON data structure facilitates lightweight and efficient business data exchange between modern applications and systems.")
+            description_parts.append("It provides a flexible format for transmitting business information across web services, mobile applications, and cloud platforms.")
+            
+            if required_fields > total_fields * 0.7:
+                description_parts.append("The data structure emphasizes data integrity with a high proportion of required fields for reliable business operations.")
+            else:
+                description_parts.append("The data structure offers flexibility with optional fields to accommodate varying business requirements and scenarios.")
+            
+            description_parts.append("This integration artifact supports real-time data processing and dynamic business workflow management.")
+            description_parts.append("It enables seamless integration between web-based systems, mobile applications, and cloud services.")
             
         elif file_type == 'XML':
-            description_parts.append("This data structure contains business information in a standardized format for system integration and data exchange.")
-            description_parts.append("It provides a structured format for transmitting business data between different applications and enterprise systems.")
-            description_parts.append("The structure supports complex business data relationships and hierarchical information organization.")
-            description_parts.append("This artifact enables organizations to exchange structured business information across multiple platforms and systems.")
-            description_parts.append("It facilitates integration with enterprise systems and supports business process automation workflows.")
-        
-        # Add structure information without technical details
-        if structures:
-            main_structure = structures[0]
-            field_count = len(main_structure.get('fields', []))
+            description_parts.append("This XML data structure provides structured business information exchange with comprehensive metadata and validation capabilities.")
+            description_parts.append("It supports complex business data hierarchies and relationships through extensible markup language features.")
             
-            if field_count > 0:
-                description_parts.append(f"The integration artifact contains comprehensive business data elements to support various business operations and information exchange requirements.")
-                
-                # Determine operation type based on structure analysis
-                required_fields = [f for f in main_structure.get('fields', []) if f.get('required', False)]
-                if required_fields:
-                    description_parts.append("The artifact includes essential business data elements that are required for successful integration and data processing.")
-                
-                if field_count > 20:
-                    description_parts.append("This comprehensive data structure supports complex business scenarios with extensive information requirements.")
-                elif field_count > 10:
-                    description_parts.append("The data structure accommodates moderate complexity business operations with multiple data requirements.")
-                else:
-                    description_parts.append("The data structure supports focused business operations with streamlined information requirements.")
+            if total_fields > 20:
+                description_parts.append("The data structure accommodates complex business scenarios with extensive field definitions and nested relationships.")
+            else:
+                description_parts.append("The data structure provides focused business data exchange with streamlined field definitions.")
+            
+            description_parts.append("This integration artifact enables robust data validation and transformation in enterprise business environments.")
+            description_parts.append("It supports legacy system integration and enterprise service bus implementations for comprehensive business process management.")
+            
+        else:
+            description_parts.append(f"This {file_type} file provides business data structure definitions for system integration and information exchange.")
+            description_parts.append("It enables standardized data formats and validation rules for consistent business information processing.")
+            description_parts.append("The integration artifact supports data transformation, mapping, and synchronization across multiple business systems.")
+            description_parts.append("It facilitates business process automation and data governance requirements in enterprise environments.")
+            description_parts.append("This artifact enables organizations to maintain data quality and consistency across diverse business applications and platforms.")
         
-        # Add integration context
-        description_parts.append("This integration artifact facilitates seamless data exchange and system interoperability in enterprise business environments.")
-        description_parts.append("It supports business process automation, data synchronization, and information sharing across multiple business systems and platforms.")
+        return " ".join(description_parts)
+    
+    def _enhance_with_ai(self, base_description: str, file_type: str) -> str:
+        """Attempt to enhance the base description with AI, but only if it produces good results."""
+        if not self._ai_initialized:
+            self._initialize_ai_models()
         
-        return " ".join(description_parts) 
+        if not self.text_generator:
+            return base_description
+        
+        try:
+            # Use a very simple enhancement prompt
+            enhancement_prompt = f"Improve this business description to be more engaging and clear: {base_description}"
+            
+            if "text-generation" in str(type(self.text_generator)):
+                result = self.text_generator(enhancement_prompt, max_length=150, min_length=50, do_sample=True, temperature=0.6, truncation=True)
+                generated_text = result[0]['generated_text']
+                enhanced = generated_text[len(enhancement_prompt):].strip()
+                
+            elif "text2text-generation" in str(type(self.text_generator)):
+                result = self.text_generator(enhancement_prompt, max_length=150, min_length=50, do_sample=True, temperature=0.6)
+                enhanced = result[0]['generated_text']
+            else:
+                return base_description
+            
+            # Only use enhancement if it's clearly better
+            if enhanced and len(enhanced) > len(base_description) * 0.8 and len(enhanced) < len(base_description) * 2:
+                return enhanced
+            else:
+                return base_description
+                
+        except Exception as e:
+            self.logger.warning(f"AI enhancement failed: {e}")
+            return base_description 

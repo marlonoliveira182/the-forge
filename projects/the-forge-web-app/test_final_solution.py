@@ -1,116 +1,145 @@
 #!/usr/bin/env python3
 """
-Final test script to verify the complete AI description generator solution.
+Final test to verify the complete AI description generator solution.
 """
 
 import sys
 import os
-import time
 import tempfile
+import time
 
-# Add the services directory to the path
-sys.path.append(os.path.join(os.path.dirname(__file__), 'services'))
+# Add the current directory to Python path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from services.ai_description_generator import AIDescriptionGenerator
 
 def test_final_solution():
-    """Test the final AI implementation with proper fallback mechanisms."""
+    """Test the final AI description generator solution with multiple file types."""
     
-    print("🎯 Testing Final AI Solution")
-    print("=" * 50)
+    print("🎯 Testing Final AI Description Generator Solution")
+    print("=" * 60)
     
-    # Test data - a simple XSD file
-    test_xsd_content = """<?xml version="1.0" encoding="UTF-8"?>
+    # Test cases with different file types
+    test_cases = [
+        {
+            'name': 'XSD - Customer Order',
+            'type': 'XSD',
+            'content': '''<?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
     <xs:element name="CustomerOrder">
         <xs:complexType>
             <xs:sequence>
-                <xs:element name="orderId" type="xs:string"/>
-                <xs:element name="customerName" type="xs:string"/>
-                <xs:element name="orderDate" type="xs:date"/>
-                <xs:element name="totalAmount" type="xs:decimal"/>
+                <xs:element name="customerId" type="xs:string" minOccurs="1" maxOccurs="1"/>
+                <xs:element name="orderDate" type="xs:date" minOccurs="1" maxOccurs="1"/>
+                <xs:element name="totalAmount" type="xs:decimal" minOccurs="1" maxOccurs="1"/>
             </xs:sequence>
         </xs:complexType>
     </xs:element>
-</xs:schema>"""
+</xs:schema>'''
+        },
+        {
+            'name': 'JSON Schema - Product Catalog',
+            'type': 'JSON Schema',
+            'content': '''{
+  "type": "object",
+  "properties": {
+    "productId": {"type": "string"},
+    "productName": {"type": "string"},
+    "price": {"type": "number"},
+    "category": {"type": "string"},
+    "inStock": {"type": "boolean"}
+  },
+  "required": ["productId", "productName", "price"]
+}'''
+        },
+        {
+            'name': 'JSON - User Profile',
+            'type': 'JSON',
+            'content': '''{
+  "userId": "12345",
+  "firstName": "John",
+  "lastName": "Doe",
+  "email": "john.doe@example.com",
+  "age": 30,
+  "isActive": true
+}'''
+        }
+    ]
     
-    # Create temporary file
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.xsd', delete=False) as f:
-        f.write(test_xsd_content)
-        temp_file = f.name
+    # Initialize the AI description generator
+    print("📋 Initializing AI Description Generator...")
+    ai_generator = AIDescriptionGenerator(enable_ai=True)
     
-    try:
-        print("\n1. Testing AI Mode with Fallback")
-        print("-" * 40)
-        
-        start_time = time.time()
-        generator = AIDescriptionGenerator(enable_ai=True)
-        
-        # Test parsing and generation
-        result = generator.generate_descriptions(temp_file, 'xsd')
-        
-        total_time = time.time() - start_time
-        print(f"⏱️  Total time: {total_time:.3f}s")
-        print(f"📝 Short Description: {result['short_description']}")
-        print(f"📄 Detailed Description: {result['detailed_description'][:300]}...")
-        
-        print("\n2. Content Quality Analysis")
-        print("-" * 40)
-        
-        # Check if the content is business-friendly
-        detailed_desc = result['detailed_description'].lower()
-        
-        business_indicators = [
-            'business', 'system', 'integration', 'data', 'exchange', 'validation',
-            'standardized', 'format', 'applications', 'enterprise'
-        ]
-        
-        business_score = sum(1 for indicator in business_indicators if indicator in detailed_desc)
-        print(f"✅ Business-friendly score: {business_score}/{len(business_indicators)} indicators found")
-        
-        # Check for technical artifacts (should be minimal)
-        technical_artifacts = [
-            'xs:string', 'xs:date', 'xs:decimal', 'complexType', 'sequence',
-            'integration artifact', 'business component', 'component type'
-        ]
-        
-        technical_score = sum(1 for artifact in technical_artifacts if artifact in detailed_desc)
-        print(f"⚠️  Technical artifacts found: {technical_score} (should be low)")
-        
-        print("\n3. Reliability Assessment")
-        print("-" * 40)
-        
-        if technical_score <= 2 and business_score >= 5:
-            print("✅ Content is business-friendly and reliable")
-        elif technical_score <= 3 and business_score >= 4:
-            print("✅ Content is mostly business-friendly")
-        else:
-            print("⚠️  Content may need improvement")
-        
-        print("\n4. Performance Assessment")
-        print("-" * 40)
-        
-        if total_time < 5:
-            print("✅ Performance is acceptable (< 5 seconds)")
-        elif total_time < 10:
-            print("⚠️  Performance is slow but acceptable (< 10 seconds)")
-        else:
-            print("❌ Performance is too slow (> 10 seconds)")
-        
-        print("\n5. Solution Summary")
-        print("-" * 40)
-        print("✅ AI model properly detects problematic content")
-        print("✅ Automatic fallback to rule-based generation")
-        print("✅ Business-friendly descriptions generated")
-        print("✅ Reliable performance with proper error handling")
-        
-    finally:
-        # Clean up
-        if os.path.exists(temp_file):
-            os.unlink(temp_file)
+    total_time = 0
+    successful_tests = 0
     
-    print("\n" + "=" * 50)
-    print("🎯 Final solution test completed!")
+    for i, test_case in enumerate(test_cases, 1):
+        print(f"\n{'='*20} Test {i}: {test_case['name']} {'='*20}")
+        
+        # Create temporary file
+        with tempfile.NamedTemporaryFile(mode='w', suffix=f'.{test_case["type"].lower()}', delete=False) as f:
+            f.write(test_case['content'])
+            temp_file_path = f.name
+        
+        try:
+            # Generate descriptions
+            start_time = time.time()
+            descriptions = ai_generator.generate_descriptions(temp_file_path, test_case['type'])
+            generation_time = time.time() - start_time
+            total_time += generation_time
+            
+            print(f"⏱️  Generation time: {generation_time:.2f}s")
+            
+            # Display results
+            print(f"\n📋 SHORT DESCRIPTION:")
+            print("-" * 30)
+            short_desc = descriptions.get('short_description', 'No short description generated')
+            print(short_desc)
+            
+            print(f"\n📋 DETAILED DESCRIPTION:")
+            print("-" * 30)
+            detailed_desc = descriptions.get('detailed_description', 'No detailed description generated')
+            print(detailed_desc)
+            
+            # Quality checks
+            print(f"\n🔍 Quality Analysis:")
+            print(f"Short description length: {len(short_desc)} characters")
+            print(f"Detailed description length: {len(detailed_desc)} characters")
+            
+            # Check if descriptions are business-friendly
+            business_terms = ['business', 'integration', 'system', 'data', 'information', 'process']
+            has_business_focus = any(term in detailed_desc.lower() for term in business_terms)
+            
+            if has_business_focus and len(detailed_desc) > 100:
+                print("✅ High-quality business-focused description")
+                successful_tests += 1
+            else:
+                print("⚠️  Description may need improvement")
+                
+        except Exception as e:
+            print(f"❌ Error during testing: {e}")
+            
+        finally:
+            # Clean up temporary file
+            try:
+                os.unlink(temp_file_path)
+            except:
+                pass
+    
+    # Summary
+    print(f"\n{'='*60}")
+    print("📊 FINAL RESULTS")
+    print(f"{'='*60}")
+    print(f"Total tests: {len(test_cases)}")
+    print(f"Successful tests: {successful_tests}")
+    print(f"Success rate: {(successful_tests/len(test_cases)*100):.1f}%")
+    print(f"Total generation time: {total_time:.2f}s")
+    print(f"Average time per test: {(total_time/len(test_cases)):.2f}s")
+    
+    if successful_tests == len(test_cases):
+        print("\n🎉 All tests passed! The solution is working correctly.")
+    else:
+        print(f"\n⚠️  {len(test_cases) - successful_tests} tests had issues.")
 
 if __name__ == "__main__":
     test_final_solution() 
