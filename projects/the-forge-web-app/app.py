@@ -822,12 +822,12 @@ def show_ai_description_page(services):
     """
     st.markdown('<div class="section-header"><h2>🤖 AI Description Generator</h2></div>', unsafe_allow_html=True)
     
-                  # Show current status
-              ai_generator = services['ai_description_generator']
-              if ai_generator.enable_ai:
-                  st.info("🤖 AI Mode: Enabled (will use AI when possible, falls back to rule-based for reliability)")
-              else:
-                  st.info("⚡ Fast Mode: Rule-based generation only (instant results)")
+    # Show current status
+    ai_generator = services['ai_description_generator']
+    if ai_generator.enable_ai:
+        st.info("🤖 AI Mode: Enabled (will use AI when possible, falls back to rule-based for reliability)")
+    else:
+        st.info("⚡ Fast Mode: Rule-based generation only (instant results)")
     
     st.markdown("""
     Generate functional descriptions for integration artifacts. Upload WSDL, XSD, JSON, XML, or JSON Schema files 
