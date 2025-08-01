@@ -482,26 +482,14 @@ class AIDescriptionGenerator:
             return f"This {file_type} file contains business data structures for system integration and information exchange."
     
     def _generate_detailed_description(self, schema_info: Dict[str, Any]) -> str:
-        """Generate a detailed functional description (5-10 sentences) using AI if available."""
+        """Generate a detailed functional description (5-10 sentences) using rule-based approach."""
         file_type = schema_info.get('file_type', 'Unknown')
         structures = schema_info.get('structures', [])
         
         if not structures:
             return f"This {file_type} file does not contain any defined structures or is empty."
         
-        # Build context for AI generation
-        context = self._build_ai_context(schema_info)
-        
-        # Try AI generation if available
-        if self.text_generator and len(context) < 1000:  # Model input limit
-            try:
-                ai_description = self._generate_ai_description(context, file_type)
-                if ai_description:
-                    return ai_description
-            except Exception as e:
-                self.logger.warning(f"AI generation failed: {e}")
-        
-        # Fallback to rule-based generation
+        # Use rule-based generation as primary method
         return self._generate_rule_based_description(schema_info)
     
     def _build_ai_context(self, schema_info: Dict[str, Any]) -> str:
@@ -543,29 +531,18 @@ class AIDescriptionGenerator:
     def _generate_ai_description(self, context: str, file_type: str) -> str:
         """Generate description using AI model with strict business focus."""
         try:
-            prompt = f"""
-            You are an expert AI assistant specialized in system integration documentation. 
-            Analyze this {file_type} integration artifact and generate a detailed functional description.
+            # Create a more focused prompt for the summarization model
+            input_text = f"""
+            Integration artifact type: {file_type}
             
-            Context:
             {context}
             
-            Generate a complete, detailed, and professional description (5-10 sentences) that:
-            1. Describes the functional purpose of the integration
-            2. Identifies which systems or domains are typically involved
-            3. Describes the type of information exchanged (e.g., customer data, billing records, inventory updates)
-            4. Highlights whether the operation is related to querying, creating, updating, or deleting data
-            5. Mentions whether the artifact represents a request, a response, or a complete message flow
-            6. Is generic enough to apply to various platforms (ETL, API Gateway, ESB)
-            7. Uses business-friendly language, avoiding technical jargon
-            8. Does not reference specific field names or technical identifiers
-            9. Does not hallucinate information not clearly present in the input
-            
-            Focus strictly on functional understanding and business context.
+            Generate a business-focused description of this integration artifact that explains its functional purpose, 
+            the type of business data it handles, and how it supports system integration workflows.
             """
             
             # Use the text generator to create a summary
-            result = self.text_generator(prompt, max_length=200, min_length=100, do_sample=False)
+            result = self.text_generator(input_text, max_length=150, min_length=80, do_sample=False)
             return result[0]['summary_text']
             
         except Exception as e:
