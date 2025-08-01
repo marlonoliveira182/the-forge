@@ -5,6 +5,7 @@ from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 import logging
 import time
+import os
 
 # Free AI libraries for text generation
 try:
@@ -58,50 +59,99 @@ class AIDescriptionGenerator:
             self.logger.info("AIDescriptionGenerator initialized with AI disabled (using rule-based generation only)")
     
     def _initialize_ai_models(self):
-        """Initialize AI models for text generation (lazy loading)."""
+        """Initialize AI models for text generation with robust error handling and fallbacks."""
         if self._ai_initialized:
             return
             
-        if TRANSFORMERS_AVAILABLE:
-            try:
-                start_time = time.time()
-                self.logger.info("Initializing AI models...")
-                
-                # Use a more suitable model for content generation
-                # Try to use a smaller generative model that's better for text generation
+        if not TRANSFORMERS_AVAILABLE:
+            self.logger.warning("Transformers library not available, using rule-based generation only")
+            self.enable_ai = False
+            return
+            
+        try:
+            start_time = time.time()
+            self.logger.info("Initializing AI models with robust fallback strategy...")
+            
+            # Set up cache directory to avoid repeated downloads
+            cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "huggingface")
+            os.makedirs(cache_dir, exist_ok=True)
+            
+            # Try models in order of reliability and size
+            models_to_try = [
+                ("distilgpt2", "text-generation"),  # Smaller, more reliable
+                ("gpt2", "text-generation"),        # Standard GPT-2
+                ("microsoft/DialoGPT-small", "text-generation"),  # Alternative
+                ("facebook/bart-base", "text2text-generation")    # Fallback
+            ]
+            
+            for model_name, pipeline_type in models_to_try:
                 try:
-                    # Try a more suitable model for content generation
-                    model_name = "gpt2"  # Smaller, more reliable for text generation
-                    self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-                    self.model = AutoModelForCausalLM.from_pretrained(model_name)
-                    self.text_generator = pipeline("text-generation", model=self.model, tokenizer=self.tokenizer)
-                    self.logger.info("Using GPT-2 for content generation")
+                    self.logger.info(f"Attempting to load {model_name}...")
+                    
+                    # Use local_files_only=False to allow download, but with better error handling
+                    if pipeline_type == "text-generation":
+                        self.tokenizer = AutoTokenizer.from_pretrained(
+                            model_name, 
+                            cache_dir=cache_dir,
+                            local_files_only=False,
+                            use_fast=True
+                        )
+                        self.model = AutoModelForCausalLM.from_pretrained(
+                            model_name, 
+                            cache_dir=cache_dir,
+                            local_files_only=False,
+                            torch_dtype=torch.float32  # Use float32 for better compatibility
+                        )
+                        self.text_generator = pipeline(
+                            "text-generation", 
+                            model=self.model, 
+                            tokenizer=self.tokenizer,
+                            device=-1  # Force CPU to avoid GPU issues
+                        )
+                    else:  # text2text-generation
+                        self.tokenizer = AutoTokenizer.from_pretrained(
+                            model_name, 
+                            cache_dir=cache_dir,
+                            local_files_only=False,
+                            use_fast=True
+                        )
+                        self.model = AutoModelForSeq2SeqLM.from_pretrained(
+                            model_name, 
+                            cache_dir=cache_dir,
+                            local_files_only=False,
+                            torch_dtype=torch.float32
+                        )
+                        self.text_generator = pipeline(
+                            "text2text-generation", 
+                            model=self.model, 
+                            tokenizer=self.tokenizer,
+                            device=-1
+                        )
+                    
+                    self.logger.info(f"Successfully loaded {model_name}")
+                    break
+                    
                 except Exception as e:
-                    self.logger.warning(f"GPT-2 failed, trying DialoGPT: {e}")
-                    try:
-                        model_name = "microsoft/DialoGPT-small"
-                        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-                        self.model = AutoModelForCausalLM.from_pretrained(model_name)
-                        self.text_generator = pipeline("text-generation", model=self.model, tokenizer=self.tokenizer)
-                        self.logger.info("Using DialoGPT-small for content generation")
-                    except Exception as e2:
-                        self.logger.warning(f"DialoGPT-small failed, falling back to BART: {e2}")
-                        # Fallback to BART but with better prompt engineering
-                        model_name = "facebook/bart-base"
-                        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-                        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
-                        self.text_generator = pipeline("text2text-generation", model=self.model, tokenizer=self.tokenizer)
-                        self.logger.info("Using BART-base for content generation")
-                
-                init_time = time.time() - start_time
-                self.logger.info(f"AI models initialized successfully in {init_time:.2f}s")
-                self._ai_initialized = True
-                
-            except Exception as e:
-                self.logger.warning(f"Could not initialize AI models: {e}")
-                self.text_generator = None
-        else:
-            self.logger.warning("Transformers library not available - using rule-based generation only")
+                    self.logger.warning(f"Failed to load {model_name}: {e}")
+                    # Clear any partial initialization
+                    self.tokenizer = None
+                    self.model = None
+                    self.text_generator = None
+                    continue
+            
+            if not self.text_generator:
+                self.logger.error("All AI models failed to load, falling back to rule-based generation")
+                self.enable_ai = False
+                return
+            
+            init_time = time.time() - start_time
+            self.logger.info(f"AI models initialized successfully in {init_time:.2f}s")
+            self._ai_initialized = True
+            
+        except Exception as e:
+            self.logger.error(f"Critical error during AI initialization: {e}")
+            self.enable_ai = False
+            self._ai_initialized = True  # Mark as initialized to prevent retries
     
     def generate_descriptions(self, file_path: str, file_type: str) -> Dict[str, str]:
         """
@@ -662,29 +712,59 @@ class AIDescriptionGenerator:
             self._initialize_ai_models()
         
         if not self.text_generator:
+            self.logger.info("No AI model available, using base description")
             return base_description
         
         try:
-            # Use a very simple enhancement prompt
-            enhancement_prompt = f"Improve this business description to be more engaging and clear: {base_description}"
+            # Use a very simple enhancement prompt that works well with generative models
+            enhancement_prompt = f"Rewrite this business description to be more engaging and professional: {base_description}"
             
-            if "text-generation" in str(type(self.text_generator)):
-                result = self.text_generator(enhancement_prompt, max_length=150, min_length=50, do_sample=True, temperature=0.6, truncation=True)
+            # Check pipeline type more reliably
+            pipeline_type = type(self.text_generator).__name__
+            self.logger.info(f"Using pipeline type: {pipeline_type}")
+            
+            if "TextGenerationPipeline" in pipeline_type:
+                # For text-generation models (GPT-2, DialoGPT)
+                result = self.text_generator(
+                    enhancement_prompt, 
+                    max_length=200, 
+                    min_length=100, 
+                    do_sample=True, 
+                    temperature=0.7, 
+                    truncation=True,
+                    pad_token_id=self.tokenizer.eos_token_id
+                )
                 generated_text = result[0]['generated_text']
+                # Extract only the new content after the prompt
                 enhanced = generated_text[len(enhancement_prompt):].strip()
                 
-            elif "text2text-generation" in str(type(self.text_generator)):
-                result = self.text_generator(enhancement_prompt, max_length=150, min_length=50, do_sample=True, temperature=0.6)
+            elif "Text2TextGenerationPipeline" in pipeline_type:
+                # For text2text-generation models (BART)
+                result = self.text_generator(
+                    enhancement_prompt, 
+                    max_length=200, 
+                    min_length=100, 
+                    do_sample=True, 
+                    temperature=0.7
+                )
                 enhanced = result[0]['generated_text']
             else:
+                self.logger.warning(f"Unknown pipeline type: {pipeline_type}, using base description")
                 return base_description
             
-            # Only use enhancement if it's clearly better
-            if enhanced and len(enhanced) > len(base_description) * 0.8 and len(enhanced) < len(base_description) * 2:
+            # Validate the enhanced text
+            if not enhanced or len(enhanced.strip()) < 50:
+                self.logger.info("AI enhancement produced insufficient content, using base description")
+                return base_description
+            
+            # Check if the enhancement is actually better
+            if len(enhanced) > len(base_description) * 0.8 and len(enhanced) < len(base_description) * 2:
+                self.logger.info("AI enhancement successful")
                 return enhanced
             else:
+                self.logger.info("AI enhancement not significantly better, using base description")
                 return base_description
                 
         except Exception as e:
             self.logger.warning(f"AI enhancement failed: {e}")
-            return base_description 
+            return base_description
