@@ -61,16 +61,20 @@ class JSONSchemaParser:
         # Clear cache for new schema
         self.schema_cache = {}
         
+        # Get required fields from schema
+        required_fields = set(schema.get('required', []))
+        
         # Handle root level properties
         if 'properties' in schema:
             for prop_name, prop_def in schema['properties'].items():
-                rows.extend(self._parse_property(prop_name, prop_def, [], schema))
+                is_required = prop_name in required_fields
+                rows.extend(self._parse_property(prop_name, prop_def, [], schema, is_required=is_required))
         
         return rows
 
     def _parse_property(self, name: str, prop_def: Dict, parent_path: List[str], 
                        root_schema: Dict, level: int = 1, req_param: str = 'Body', 
-                       category: str = 'element') -> List[Dict]:
+                       category: str = 'element', is_required: bool = False) -> List[Dict]:
         """
         Parse a JSON Schema property and convert to XSD-like format.
         
@@ -96,15 +100,15 @@ class JSONSchemaParser:
         
         # Handle arrays - ONLY arrays should be processed here
         if json_type == 'array':
-            rows.extend(self._parse_array_property(name, prop_def, path, root_schema, level, req_param, category))
+            rows.extend(self._parse_array_property(name, prop_def, path, root_schema, level, req_param, category, is_required))
         else:
             # Handle non-array properties
-            rows.extend(self._parse_simple_property(name, prop_def, path, root_schema, level, req_param, category))
+            rows.extend(self._parse_simple_property(name, prop_def, path, root_schema, level, req_param, category, is_required))
         
         return rows
 
     def _parse_array_property(self, name: str, prop_def: Dict, path: List[str], 
-                             root_schema: Dict, level: int, req_param: str, category: str) -> List[Dict]:
+                             root_schema: Dict, level: int, req_param: str, category: str, is_required: bool = False) -> List[Dict]:
         """
         Parse an array property specifically.
         """
@@ -123,10 +127,10 @@ class JSONSchemaParser:
                         'levels': path[:self.max_level] + [''] * (self.max_level - len(path)),
                         'Request Parameter': req_param,
                         'GDPR': '',
-                        'Cardinality': '0..n',
+                        'Cardinality': self._determine_cardinality(prop_def),
                         'Type': f'array<object>',
                         'Base Type': 'object',
-                        'Details': '',
+                        'Details': self._extract_details(prop_def),
                         'Description': f'Array of {ref_path.split("/")[-1]} objects',
                         'Category': category,
                         'Example': ''
@@ -135,8 +139,11 @@ class JSONSchemaParser:
                     
                     # Parse the referenced object properties
                     if resolved_def.get('type') == 'object' and 'properties' in resolved_def:
+                        # Get required fields for referenced object
+                        ref_required_fields = set(resolved_def.get('required', []))
                         for nested_name, nested_def in resolved_def['properties'].items():
-                            rows.extend(self._parse_property(nested_name, nested_def, path, root_schema, level + 1, req_param, category))
+                            ref_is_required = nested_name in ref_required_fields
+                            rows.extend(self._parse_property(nested_name, nested_def, path, root_schema, level + 1, req_param, category, ref_is_required))
             else:
                 # Array of primitives or inline objects
                 item_type = items_def.get('type', 'string')
@@ -146,10 +153,10 @@ class JSONSchemaParser:
                         'levels': path[:self.max_level] + [''] * (self.max_level - len(path)),
                         'Request Parameter': req_param,
                         'GDPR': '',
-                        'Cardinality': '0..n',
+                        'Cardinality': self._determine_cardinality(prop_def),
                         'Type': f'array<object>',
                         'Base Type': 'object',
-                        'Details': '',
+                        'Details': self._extract_details(prop_def),
                         'Description': f'Array of objects',
                         'Category': category,
                         'Example': ''
@@ -157,8 +164,11 @@ class JSONSchemaParser:
                     rows.append(array_row)
                     
                     # Parse the inline object properties
+                    # Get required fields for inline object
+                    inline_required_fields = set(items_def.get('required', []))
                     for nested_name, nested_def in items_def['properties'].items():
-                        rows.extend(self._parse_property(nested_name, nested_def, path, root_schema, level + 1, req_param, category))
+                        inline_is_required = nested_name in inline_required_fields
+                        rows.extend(self._parse_property(nested_name, nested_def, path, root_schema, level + 1, req_param, category, inline_is_required))
                 else:
                     # Array of primitives
                     xsd_type = self._json_type_to_xsd_type(item_type)
@@ -166,10 +176,10 @@ class JSONSchemaParser:
                         'levels': path[:self.max_level] + [''] * (self.max_level - len(path)),
                         'Request Parameter': req_param,
                         'GDPR': '',
-                        'Cardinality': '0..n',
+                        'Cardinality': self._determine_cardinality(prop_def),
                         'Type': f'array<{xsd_type}>',
                         'Base Type': xsd_type,
-                        'Details': self._extract_details(items_def),
+                        'Details': self._extract_details(prop_def),
                         'Description': f'Array of {item_type}',
                         'Category': category,
                         'Example': items_def.get('example', '')
@@ -179,7 +189,7 @@ class JSONSchemaParser:
         return rows
 
     def _parse_simple_property(self, name: str, prop_def: Dict, path: List[str], 
-                              root_schema: Dict, level: int, req_param: str, category: str) -> List[Dict]:
+                              root_schema: Dict, level: int, req_param: str, category: str, is_required: bool = False) -> List[Dict]:
         """
         Parse a non-array property.
         """
@@ -196,7 +206,7 @@ class JSONSchemaParser:
                     'levels': path[:self.max_level] + [''] * (self.max_level - len(path)),
                     'Request Parameter': req_param,
                     'GDPR': '',
-                    'Cardinality': '1..1',
+                    'Cardinality': self._determine_cardinality(prop_def, True),  # References are typically required
                     'Type': 'object',
                     'Base Type': 'object',
                     'Details': '',
@@ -220,7 +230,7 @@ class JSONSchemaParser:
                 'levels': path[:self.max_level] + [''] * (self.max_level - len(path)),
                 'Request Parameter': req_param,
                 'GDPR': '',
-                'Cardinality': '1..1',
+                'Cardinality': self._determine_cardinality(prop_def, is_required),
                 'Type': xsd_type,
                 'Base Type': xsd_type,
                 'Details': self._extract_details(prop_def),
@@ -232,8 +242,11 @@ class JSONSchemaParser:
             
             # Handle nested objects
             if json_type == 'object' and 'properties' in prop_def:
+                # Get required fields for nested object
+                nested_required_fields = set(prop_def.get('required', []))
                 for nested_name, nested_def in prop_def['properties'].items():
-                    rows.extend(self._parse_property(nested_name, nested_def, path, root_schema, level + 1, req_param, category))
+                    nested_is_required = nested_name in nested_required_fields
+                    rows.extend(self._parse_property(nested_name, nested_def, path, root_schema, level + 1, req_param, category, nested_is_required))
         
         return rows
 
@@ -289,6 +302,41 @@ class JSONSchemaParser:
         
         return type_mapping.get(json_type, 'xs:string')
 
+    def _determine_cardinality(self, prop_def: Dict, is_required: bool = False) -> str:
+        """
+        Determine cardinality based on JSON Schema constraints.
+        
+        Args:
+            prop_def: Property definition
+            is_required: Whether the property is required
+            
+        Returns:
+            Cardinality string (e.g., "1..1", "0..1", "0..n", "1..n")
+        """
+        # Check if it's an array
+        if prop_def.get('type') == 'array':
+            min_items = prop_def.get('minItems', 0)
+            max_items = prop_def.get('maxItems')
+            
+            if min_items == 0 and max_items is None:
+                return "0..n"
+            elif min_items == 1 and max_items is None:
+                return "1..n"
+            elif min_items == 0 and max_items == 1:
+                return "0..1"
+            elif min_items == 1 and max_items == 1:
+                return "1..1"
+            elif max_items is not None:
+                return f"{min_items}..{max_items}"
+            else:
+                return f"{min_items}..n"
+        
+        # For non-array properties
+        if is_required:
+            return "1..1"
+        else:
+            return "0..1"
+
     def _extract_details(self, prop_def: Dict) -> str:
         """
         Extract constraints and details from JSON Schema property definition.
@@ -330,5 +378,45 @@ class JSONSchemaParser:
         if 'required' in prop_def:
             required_fields = ','.join(prop_def['required'])
             details.append(f"required={required_fields}")
+        
+        # Additional JSON Schema constraints
+        if 'multipleOf' in prop_def:
+            details.append(f"multipleOf={prop_def['multipleOf']}")
+        
+        if 'exclusiveMinimum' in prop_def:
+            details.append(f"exclusiveMinimum={prop_def['exclusiveMinimum']}")
+        
+        if 'exclusiveMaximum' in prop_def:
+            details.append(f"exclusiveMaximum={prop_def['exclusiveMaximum']}")
+        
+        if 'uniqueItems' in prop_def:
+            details.append(f"uniqueItems={prop_def['uniqueItems']}")
+        
+        if 'minItems' in prop_def:
+            details.append(f"minItems={prop_def['minItems']}")
+        
+        if 'maxItems' in prop_def:
+            details.append(f"maxItems={prop_def['maxItems']}")
+        
+        if 'minProperties' in prop_def:
+            details.append(f"minProperties={prop_def['minProperties']}")
+        
+        if 'maxProperties' in prop_def:
+            details.append(f"maxProperties={prop_def['maxProperties']}")
+        
+        if 'additionalProperties' in prop_def:
+            details.append(f"additionalProperties={prop_def['additionalProperties']}")
+        
+        if 'allOf' in prop_def:
+            details.append("allOf=composite")
+        
+        if 'anyOf' in prop_def:
+            details.append("anyOf=union")
+        
+        if 'oneOf' in prop_def:
+            details.append("oneOf=choice")
+        
+        if 'not' in prop_def:
+            details.append("not=exclusion")
         
         return ', '.join(details) 

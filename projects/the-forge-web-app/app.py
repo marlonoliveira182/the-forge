@@ -1144,7 +1144,9 @@ def process_excel_conversion(file_path: str, conversion_key: str, services: dict
             schema_data = json_to_schema.convert_json_example_to_schema(json_data, "GeneratedSchema")
             # Parse the schema and convert to Excel
             json_schema_parser = services['json_schema_parser']
-            parsed_data = json_schema_parser.parse_json_schema_data(schema_data)
+            # Convert schema to string and use parse_json_schema_string
+            schema_string = json.dumps(schema_data)
+            parsed_data = json_schema_parser.parse_json_schema_string(schema_string)
             output_buffer = BytesIO()
             excel_exporter.export({'schema': parsed_data}, output_buffer)
             output_buffer.seek(0)
@@ -1156,7 +1158,9 @@ def process_excel_conversion(file_path: str, conversion_key: str, services: dict
                 schema_data = json.load(f)
             # Parse JSON Schema and convert to Excel
             json_schema_parser = services['json_schema_parser']
-            parsed_data = json_schema_parser.parse_json_schema_data(schema_data)
+            # Convert schema to string and use parse_json_schema_string
+            schema_string = json.dumps(schema_data)
+            parsed_data = json_schema_parser.parse_json_schema_string(schema_string)
             output_buffer = BytesIO()
             excel_exporter.export({'schema': parsed_data}, output_buffer)
             output_buffer.seek(0)
@@ -1306,6 +1310,221 @@ def process_mapping(source_file, target_file, services, source_case="Original", 
         if target_temp_path and os.path.exists(target_temp_path):
             tgt_rows = parse_schema_file(target_temp_path, services)
         
+        # Detect if both schemas are JSON schemas
+        source_is_json = source_file.name.lower().endswith('.json') or source_temp_path.endswith('.json')
+        target_is_json = target_file.name.lower().endswith('.json') or target_temp_path.endswith('.json')
+        both_json_schemas = source_is_json and target_is_json
+        
+        if both_json_schemas:
+            # For JSON Schema to JSON Schema mapping, use single sheet approach
+            return _process_json_schema_mapping(src_rows, tgt_rows, source_case, target_case, min_match_threshold)
+        else:
+            # For XSD or mixed schema mapping, use multi-sheet approach
+            return _process_mixed_schema_mapping(src_rows, tgt_rows, source_case, target_case, reorder_attributes, min_match_threshold)
+        
+    except Exception as e:
+        st.error(f"Error in mapping: {str(e)}")
+        return None
+
+
+def _process_json_schema_mapping(src_rows, tgt_rows, source_case, target_case, min_match_threshold):
+    """
+    Process JSON Schema to JSON Schema mapping using single sheet approach.
+    Respects JSON schema logic including restrictions, cardinalities, etc.
+    """
+    try:
+        # Build Excel file with single sheet for JSON schemas
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "JSON Schema Mapping"
+        
+        # Initialize variables for statistics
+        total_source_fields = 0
+        matched_fields = 0
+        
+        # Calculate max levels for both schemas
+        max_src_level = max((len(row['levels']) for row in src_rows), default=1)
+        max_tgt_level = max((len(row['levels']) for row in tgt_rows), default=1) if tgt_rows else 1
+        
+        # Define headers with same structure as XSD transformation
+        src_cols = [f'Level{i+1}_src' for i in range(max_src_level)] + ['Request Parameter_src', 'GDPR_src', 'Cardinality_src', 'Type_src', 'Base Type_src', 'Details_src', 'Description_src', 'Category_src', 'Example_src']
+        tgt_cols = [f'Level{i+1}_tgt' for i in range(max_tgt_level)] + ['Request Parameter_tgt', 'GDPR_tgt', 'Cardinality_tgt', 'Type_tgt', 'Base Type_tgt', 'Details_tgt', 'Description_tgt', 'Category_tgt', 'Example_tgt']
+        headers = src_cols + ['Destination Fields'] + tgt_cols
+        ws.append(headers)
+        ws.append([''] * len(headers))  # Second header row blank for now
+        
+        def row_path(row):
+            return '.'.join(row['levels'])
+        
+        tgt_path_dict = {row_path(row): row for row in tgt_rows}
+        tgt_paths = list(tgt_path_dict.keys())
+        
+        # Create a mapping of source paths to target paths based on similarity
+        source_to_target_mapping = {}
+        
+        for src_row in src_rows:
+            # Apply case conversion to source levels if needed
+            converted_levels = src_row['levels'].copy()
+            if source_case == "PascalCase":
+                converted_levels = [camel_to_pascal(level) for level in converted_levels]
+            elif source_case == "camelCase":
+                converted_levels = [pascal_to_camel(level) for level in converted_levels]
+            
+            src_levels = converted_levels + [''] * (max_src_level - len(converted_levels))
+            src_vals = src_levels + [
+                src_row.get('Request Parameter',''),
+                src_row.get('GDPR',''),
+                src_row.get('Cardinality',''),
+                src_row.get('Type',''),
+                src_row.get('Base Type',''),
+                src_row.get('Details',''),
+                src_row.get('Description',''),
+                src_row.get('Category','element'),
+                src_row.get('Example','')
+            ]
+            
+            src_path_str = row_path(src_row)
+            
+            # Check if we already have a mapping for this source path
+            if src_path_str in source_to_target_mapping:
+                tgt_row = source_to_target_mapping[src_path_str]
+            else:
+                # Try to find a match
+                tgt_row = tgt_path_dict.get(src_path_str)
+                best_match = ''
+                
+                if not tgt_row and tgt_paths:
+                    # Use fuzzy matching with a higher threshold for better accuracy
+                    matches = difflib.get_close_matches(src_path_str, tgt_paths, n=1, cutoff=0.6)
+                    if matches:
+                        best_match = matches[0]
+                        tgt_row = tgt_path_dict[best_match]
+                
+                # Store the mapping to avoid re-computation
+                source_to_target_mapping[src_path_str] = tgt_row
+            
+            dest_field = ''  # Initialize destination field as empty
+            
+            # Apply case conversion to target levels if needed
+            converted_tgt_levels = []
+            if tgt_row:
+                converted_tgt_levels = tgt_row['levels'].copy()
+                if target_case == "PascalCase":
+                    converted_tgt_levels = [camel_to_pascal(level) for level in converted_tgt_levels]
+                elif target_case == "camelCase":
+                    converted_tgt_levels = [pascal_to_camel(level) for level in converted_tgt_levels]
+                # Set destination field to the matched target path
+                dest_field = '.'.join([lvl for lvl in converted_tgt_levels if lvl])
+                tgt_levels = converted_tgt_levels + [''] * (max_tgt_level - len(converted_tgt_levels))
+            else:
+                tgt_levels = ['']*max_tgt_level
+                # Keep dest_field as empty string for unmatched source fields
+            
+            tgt_vals = tgt_levels + [
+                tgt_row.get('Request Parameter','') if tgt_row else '',
+                tgt_row.get('GDPR','') if tgt_row else '',
+                tgt_row.get('Cardinality','') if tgt_row else '',
+                tgt_row.get('Type','') if tgt_row else '',
+                tgt_row.get('Base Type','') if tgt_row else '',
+                tgt_row.get('Details','') if tgt_row else '',
+                tgt_row.get('Description','') if tgt_row else '',
+                tgt_row.get('Category','element') if tgt_row else '',
+                tgt_row.get('Example','') if tgt_row else ''
+            ]
+            
+            ws.append(src_vals + [dest_field] + tgt_vals)
+        
+        # Update statistics
+        total_source_fields = len(src_rows)
+        matched_fields = sum(1 for src_row in src_rows 
+                          if source_to_target_mapping.get(row_path(src_row)) is not None)
+        
+        # Add summary row at the end
+        summary_row = [''] * len(src_vals) + [f'SUMMARY: {matched_fields}/{total_source_fields} fields matched'] + [''] * len(tgt_vals)
+        ws.append(summary_row)
+        
+        # Prune unused columns
+        def last_nonempty_level_col(start_col, num_levels):
+            for col in range(start_col + num_levels - 1, start_col - 1, -1):
+                for row in ws.iter_rows(min_row=3, min_col=col, max_col=col):
+                    if any(cell.value not in (None, '') for cell in row):
+                        return col
+            return start_col - 1
+        
+        src_level_start = 1
+        last_src_col = last_nonempty_level_col(src_level_start, max_src_level)
+        for col in range(src_level_start + max_src_level - 1, last_src_col, -1):
+            ws.delete_cols(col)
+        
+        header_row = [cell.value for cell in ws[1]]
+        try:
+            tgt_level_start = header_row.index('Level1_tgt') + 1
+        except ValueError:
+            tgt_level_start = len(header_row) + 1
+        
+        for col in range(tgt_level_start + max_tgt_level - 1, tgt_level_start - 1, -1):
+            col_letter = get_column_letter(col)
+            if col > tgt_level_start and all((ws.cell(row=row, column=col).value in (None, '')) for row in range(3, ws.max_row + 1)):
+                ws.delete_cols(col)
+        
+        # Calculate overall match percentage
+        match_percentage = (matched_fields / total_source_fields * 100) if total_source_fields > 0 else 0
+        unmatched_fields = total_source_fields - matched_fields
+        
+        # Check if we have enough matches to generate a meaningful mapping
+        if match_percentage < min_match_threshold:
+            # Provide detailed analysis
+            st.warning(f"⚠️ **JSON Schemas don't match well enough to generate a mapping**")
+            st.markdown(f"""
+            **Analysis Results:**
+            - **Source fields:** {total_source_fields}
+            - **Matched fields:** {matched_fields}
+            - **Unmatched fields:** {unmatched_fields}
+            - **Match percentage:** {match_percentage:.1f}%
+            - **Minimum threshold:** {min_match_threshold}%
+            
+            **Possible reasons for low match:**
+            - Different JSON Schema structures or naming conventions
+            - Incompatible data models
+            - Different business domains or use cases
+            - Missing or extra fields in one of the schemas
+            
+            **Suggestions:**
+            - Check if the JSON schemas are from the same domain/business context
+            - Verify that both schemas represent similar data structures
+            - Consider using different source/target schemas that are more compatible
+            - Review the field names and structure for potential manual mapping
+            """)
+            return None
+        
+        # Save to buffer
+        output_buffer = BytesIO()
+        wb.save(output_buffer)
+        
+        # Clean up temp files
+        if 'source_temp_path' in locals():
+            os.unlink(source_temp_path)
+        if 'target_temp_path' in locals():
+            os.unlink(target_temp_path)
+        
+        output_buffer.seek(0)
+        
+        # Show success message with match statistics
+        st.success(f"✅ **JSON Schema mapping generated successfully!** ({match_percentage:.1f}% of fields matched)")
+        
+        return output_buffer.getvalue()
+        
+    except Exception as e:
+        st.error(f"Error in JSON schema mapping: {str(e)}")
+        return None
+
+
+def _process_mixed_schema_mapping(src_rows, tgt_rows, source_case, target_case, reorder_attributes, min_match_threshold):
+    """
+    Process mixed schema mapping (XSD, JSON Schema, or mixed) using multi-sheet approach.
+    This is the original logic for handling XSD and mixed schema types.
+    """
+    try:
         # Group source rows by message/element name for multi-sheet structure
         src_messages = {}
         current_message = "schema"  # Default message name
@@ -1466,8 +1685,10 @@ def process_mapping(source_file, target_file, services, source_case="Original", 
         # Check if we have enough matches to generate a meaningful mapping
         if match_percentage < min_match_threshold:
             # Clean up temp files before returning
-            os.unlink(source_temp_path)
-            os.unlink(target_temp_path)
+            if 'source_temp_path' in locals():
+                os.unlink(source_temp_path)
+            if 'target_temp_path' in locals():
+                os.unlink(target_temp_path)
             
             # Provide detailed analysis
             st.warning(f"⚠️ **Schemas don't match well enough to generate a mapping**")
@@ -1498,7 +1719,7 @@ def process_mapping(source_file, target_file, services, source_case="Original", 
         wb.save(output_buffer)
         
         # --- Post-processing QA: Excel Output Validator ---
-        xsd_path = source_temp_path if source_temp_path else target_temp_path
+        xsd_path = source_temp_path if 'source_temp_path' in locals() else target_temp_path
         try:
             from services.excel_output_validator import validate_excel_output, _log_messages
             _log_messages.clear()
@@ -1604,8 +1825,10 @@ def process_mapping(source_file, target_file, services, source_case="Original", 
                 # Continue without reordering rather than failing the entire process
         
         # Clean up temp files
-        os.unlink(source_temp_path)
-        os.unlink(target_temp_path)
+        if 'source_temp_path' in locals():
+            os.unlink(source_temp_path)
+        if 'target_temp_path' in locals():
+            os.unlink(target_temp_path)
         
         output_buffer.seek(0)
         
@@ -1615,7 +1838,7 @@ def process_mapping(source_file, target_file, services, source_case="Original", 
         return output_buffer.getvalue()
         
     except Exception as e:
-        st.error(f"Error in mapping: {str(e)}")
+        st.error(f"Error in mixed schema mapping: {str(e)}")
         return None
 
 def process_wsdl_to_xsd(wsdl_file, services):

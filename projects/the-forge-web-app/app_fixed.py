@@ -473,7 +473,7 @@ def show_schema_to_excel_page(services):
                 st.error(f"Error converting to Excel: {str(e)}")
 
 def show_converter_page(services):
-    """Display the converter page."""
+    """Display the converter page with dynamic source/target selection."""
     st.markdown('<div class="section-header"><h2>🔄 Converter</h2></div>', unsafe_allow_html=True)
     
     st.markdown("""
@@ -505,8 +505,154 @@ def show_converter_page(services):
         else:
             target_type = None
     
+    # Get conversion key and info
     if source_type and target_type:
-        st.info(f"Converting from {source_type} to {target_type}")
+        conversion_key = converter_service.get_conversion_key(source_type, target_type)
+        supported_conversions = converter_service.get_supported_conversions()
+        conversion_info = supported_conversions.get(conversion_key, {})
+        
+        if conversion_info:
+            st.markdown(f"### 📋 {conversion_info.get('name', 'Conversion')}")
+            st.markdown(f"**Description:** {conversion_info.get('description', 'N/A')}")
+            st.markdown(f"**Input:** {conversion_info.get('input_type', 'N/A')} → **Output:** {conversion_info.get('output_type', 'N/A')}")
+            
+            # Show help information
+            help_info = converter_service.get_conversion_help(conversion_key)
+            with st.expander("ℹ️ Conversion Help"):
+                st.markdown(f"**Input Format:** {help_info.get('input_format', 'N/A')}")
+                st.markdown(f"**Output Format:** {help_info.get('output_format', 'N/A')}")
+                st.markdown(f"**Features:** {help_info.get('features', 'N/A')}")
+                st.markdown(f"**Example:** `{help_info.get('example', 'N/A')}`")
+        else:
+            st.warning(f"⚠️ Conversion from {source_type} to {target_type} is not yet implemented.")
+            return
+    
+        # File upload
+        st.markdown("### 📤 Input File")
+        
+        # Determine file types based on source type
+        file_types = []
+        if source_type == "json example" or source_type == "json schema":
+            file_types = ['json']
+        elif source_type == "xsd":
+            file_types = ['xsd', 'xml']
+        elif source_type == "xml example":
+            file_types = ['xml']
+        elif source_type == "excel":
+            file_types = ['xlsx', 'xls']
+        
+        uploaded_file = st.file_uploader(
+            f"Upload {source_type} file",
+            type=file_types,
+            key=f"converter_uploader_{conversion_key}",
+            help=f"Upload your {source_type} file"
+        )
+        
+        if uploaded_file:
+            st.markdown(f'<div class="success-message">✅ Uploaded: {uploaded_file.name}</div>', unsafe_allow_html=True)
+            
+            # Show file preview
+            content = uploaded_file.read()
+            uploaded_file.seek(0)  # Reset file pointer
+            
+            with st.expander("📄 File Preview"):
+                try:
+                    decoded_content = content.decode('utf-8')
+                    preview = decoded_content[:1000] + "..." if len(decoded_content) > 1000 else decoded_content
+                    
+                    if uploaded_file.name.lower().endswith('.json'):
+                        st.code(preview, language="json")
+                    else:
+                        st.code(preview, language="xml")
+                except UnicodeDecodeError:
+                    st.code(content[:500], language="text")
+        
+        # Conversion options
+        st.markdown("### ⚙️ Conversion Options")
+        
+        # Process conversion button
+        if st.button("🔄 Convert", type="primary", use_container_width=True):
+            if uploaded_file:
+                try:
+                    # Save uploaded file to temporary file
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_file.name.split('.')[-1]}") as temp_file:
+                        temp_file.write(uploaded_file.getvalue())
+                        temp_file_path = temp_file.name
+                    
+                    try:
+                        # Process the conversion
+                        if conversion_key in ["json_to_excel", "json_schema_to_excel", "xsd_to_excel", "xml_to_excel"]:
+                            # Excel conversions
+                            result_bytes = process_excel_conversion(temp_file_path, conversion_key, services)
+                            
+                            # Provide download link
+                            st.markdown("### 📥 Download Result")
+                            st.download_button(
+                                label="📊 Download Excel File",
+                                data=result_bytes,
+                                file_name=f"converted_{uploaded_file.name.split('.')[0]}.xlsx",
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            )
+                            
+                            # Show statistics
+                            st.markdown("### 📊 Conversion Statistics")
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("Status", "✅ Success")
+                            with col2:
+                                st.metric("Input Size", f"{len(uploaded_file.getvalue())} bytes")
+                            with col3:
+                                st.metric("Output Size", f"{len(result_bytes)} bytes")
+                        
+                        else:
+                            # Non-Excel conversions
+                            result = converter_service.process_file_conversion(temp_file_path, conversion_key)
+                            
+                            # Save result to temporary file
+                            output_path = converter_service.save_conversion_result(result, conversion_key, temp_file_path)
+                            
+                            # Provide download link
+                            st.markdown("### 📥 Download Result")
+                            with open(output_path, 'rb') as f:
+                                result_bytes = f.read()
+                            
+                            # Determine file extension based on target type
+                            file_ext = "txt"
+                            if target_type == "json schema":
+                                file_ext = "json"
+                            elif target_type == "xsd":
+                                file_ext = "xsd"
+                            elif target_type == "xml example":
+                                file_ext = "xml"
+                            elif target_type == "json example":
+                                file_ext = "json"
+                            
+                            st.download_button(
+                                label=f"📄 Download {target_type.upper()} File",
+                                data=result_bytes,
+                                file_name=f"converted_{uploaded_file.name.split('.')[0]}.{file_ext}",
+                                mime="text/plain"
+                            )
+                            
+                            # Show statistics
+                            st.markdown("### 📊 Conversion Statistics")
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("Status", "✅ Success")
+                            with col2:
+                                st.metric("Input Size", f"{len(uploaded_file.getvalue())} bytes")
+                            with col3:
+                                st.metric("Output Size", f"{len(result_bytes)} bytes")
+                    
+                    finally:
+                        # Clean up temporary file
+                        if os.path.exists(temp_file_path):
+                            os.unlink(temp_file_path)
+                
+                except Exception as e:
+                    st.error(f"❌ Conversion failed: {str(e)}")
+            else:
+                st.warning("⚠️ Please upload a file to convert.")
 
 def show_about_page():
     """Display the about page."""
@@ -546,6 +692,81 @@ def process_schema_to_excel(schema_file, services):
     st.info("Converting to Excel...")
     # Placeholder for Excel conversion logic
     st.success("Excel file generated!")
+
+def process_excel_conversion(file_path: str, conversion_key: str, services: dict) -> bytes:
+    """Process Excel conversions using the existing ExcelExporter service."""
+    try:
+        excel_exporter = services['excel_exporter']
+        
+        if conversion_key == "json_to_excel":
+            # Convert JSON example to Excel
+            with open(file_path, 'r', encoding='utf-8') as f:
+                json_data = json.load(f)
+            # Use ExcelExporter for JSON to Excel conversion
+            # First convert JSON to schema, then to Excel
+            json_to_schema = services['converter'].json_to_schema
+            schema_data = json_to_schema.convert_json_example_to_schema(json_data, "GeneratedSchema")
+            # Parse the schema and convert to Excel
+            json_schema_parser = services['json_schema_parser']
+            # Convert schema to string and use parse_json_schema_string
+            schema_string = json.dumps(schema_data)
+            parsed_data = json_schema_parser.parse_json_schema_string(schema_string)
+            output_buffer = BytesIO()
+            excel_exporter.export({'schema': parsed_data}, output_buffer)
+            output_buffer.seek(0)
+            return output_buffer.getvalue()
+        
+        elif conversion_key == "json_schema_to_excel":
+            # Convert JSON Schema to Excel
+            with open(file_path, 'r', encoding='utf-8') as f:
+                schema_data = json.load(f)
+            # Parse JSON Schema and convert to Excel
+            json_schema_parser = services['json_schema_parser']
+            # Convert schema to string and use parse_json_schema_string
+            schema_string = json.dumps(schema_data)
+            parsed_data = json_schema_parser.parse_json_schema_string(schema_string)
+            output_buffer = BytesIO()
+            excel_exporter.export({'schema': parsed_data}, output_buffer)
+            output_buffer.seek(0)
+            return output_buffer.getvalue()
+        
+        elif conversion_key == "xsd_to_excel":
+            # Convert XSD to Excel
+            xsd_parser = services['xsd_parser']
+            parsed_data = xsd_parser.parse_xsd_file(file_path)
+            output_buffer = BytesIO()
+            excel_exporter.export({'schema': parsed_data}, output_buffer)
+            output_buffer.seek(0)
+            return output_buffer.getvalue()
+        
+        elif conversion_key == "xml_to_excel":
+            # Convert XML to Excel (first convert to XSD, then to Excel)
+            # This is a simplified approach - in practice, you might want to parse XML directly
+            xml_to_xsd = services['converter'].xml_to_xsd
+            xsd_content = xml_to_xsd.convert_xml_example_to_xsd(
+                open(file_path, 'r', encoding='utf-8').read(), 
+                "GeneratedSchema"
+            )
+            # Save XSD to temp file and convert to Excel
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.xsd') as temp_xsd:
+                temp_xsd.write(xsd_content.encode('utf-8'))
+                temp_xsd_path = temp_xsd.name
+            
+            try:
+                xsd_parser = services['xsd_parser']
+                parsed_data = xsd_parser.parse_xsd_file(temp_xsd_path)
+                output_buffer = BytesIO()
+                excel_exporter.export({'schema': parsed_data}, output_buffer)
+                output_buffer.seek(0)
+                return output_buffer.getvalue()
+            finally:
+                os.unlink(temp_xsd_path)
+        
+        else:
+            raise ValueError(f"Unsupported Excel conversion: {conversion_key}")
+    
+    except Exception as e:
+        raise Exception(f"Error in Excel conversion {conversion_key}: {str(e)}")
 
 def main():
     """Main application function."""
