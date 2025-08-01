@@ -426,40 +426,67 @@ def get_services():
     }
 
 def main():
+    # Header
+    st.markdown('''
+        <div class="main-header">
+            <h1>🔨 The Forge</h1>
+            <p>Schema Transformation & Mapping Tool</p>
+        </div>
+    ''', unsafe_allow_html=True)
+    
     # Get services
     services = get_services()
     
+    # Sidebar Header
+    st.sidebar.markdown("""
+        <div class="sidebar-header">
+            <h2>🔨 The Forge</h2>
+        </div>
+    """, unsafe_allow_html=True)
+    
     # Initialize session state if not exists
-    if 'tool' not in st.session_state:
-        st.session_state.tool = None
+    if 'current_page' not in st.session_state:
+        st.session_state.current_page = "Home"
     
-    # Import and use the new homepage
-    from homepage import show_home_page
+    # Navigation Menu with unique keys
+    if st.sidebar.button("🏠 Home", key="nav_home", use_container_width=True):
+        st.session_state.current_page = "Home"
     
-    # Check if a tool was selected from homepage
-    if st.session_state.tool is None:
-        # Show the homepage
+    if st.sidebar.button("📊 Schema Mapping", key="nav_mapping", use_container_width=True):
+        st.session_state.current_page = "Schema Mapping"
+    
+    if st.sidebar.button("🔧 WSDL to XSD", key="nav_wsdl", use_container_width=True):
+        st.session_state.current_page = "WSDL to XSD"
+    
+    if st.sidebar.button("📋 Schema to Excel", key="nav_excel", use_container_width=True):
+        st.session_state.current_page = "Schema to Excel"
+    
+    if st.sidebar.button("ℹ️ About", key="nav_about", use_container_width=True):
+        st.session_state.current_page = "About"
+    
+    # Sidebar Footer
+    st.sidebar.markdown("""
+        <div class="sidebar-footer">
+            <div>Forged with Streamlit</div>
+            <div class="version">v1.0.0</div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # Display current page
+    if st.session_state.current_page == "Home":
         show_home_page()
-    else:
-        # Show the selected tool
-        if st.session_state.tool == "Schema to Excel":
-            show_schema_to_excel_page(services)
-        elif st.session_state.tool == "WSDL to XSD":
-            show_wsdl_to_xsd_page(services)
-        elif st.session_state.tool == "Schema Mapping":
-            show_mapping_page(services)
-        else:
-            # Fallback to homepage
-            show_home_page()
+    elif st.session_state.current_page == "Schema Mapping":
+        show_mapping_page(services)
+    elif st.session_state.current_page == "WSDL to XSD":
+        show_wsdl_to_xsd_page(services)
+    elif st.session_state.current_page == "Schema to Excel":
+        show_schema_to_excel_page(services)
+    elif st.session_state.current_page == "About":
+        show_about_page()
 
 
 
 def show_mapping_page(services):
-    # Back to Home button
-    if st.button("🏠 Back to Home", key="back_home_mapping", use_container_width=True):
-        st.session_state.tool = None
-        st.rerun()
-    
     st.markdown('<div class="section-header"><h2>📊 Schema Mapping</h2></div>', unsafe_allow_html=True)
     
     st.markdown("""
@@ -562,11 +589,6 @@ def show_mapping_page(services):
             st.markdown('<div class="warning-message">⚠️ Please upload both source and target schema files</div>', unsafe_allow_html=True)
 
 def show_wsdl_to_xsd_page(services):
-    # Back to Home button
-    if st.button("🏠 Back to Home", key="back_home_wsdl", use_container_width=True):
-        st.session_state.tool = None
-        st.rerun()
-    
     st.markdown('<div class="section-header"><h2>🔧 WSDL to XSD Extraction</h2></div>', unsafe_allow_html=True)
     
     st.markdown("""
@@ -616,11 +638,6 @@ def show_wsdl_to_xsd_page(services):
             st.markdown('<div class="warning-message">⚠️ Please upload a WSDL file</div>', unsafe_allow_html=True)
 
 def show_schema_to_excel_page(services):
-    # Back to Home button
-    if st.button("🏠 Back to Home", key="back_home_excel", use_container_width=True):
-        st.session_state.tool = None
-        st.rerun()
-    
     st.markdown('<div class="section-header"><h2>📋 Schema to Excel</h2></div>', unsafe_allow_html=True)
     
     st.markdown("""

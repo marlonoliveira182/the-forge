@@ -5,7 +5,7 @@ from datetime import datetime
 def show_home_page():
     """
     Self-contained homepage component for The Forge app.
-    Updates st.session_state.tool for navigation.
+    Focused on integration architect features.
     """
     
     # Page configuration
@@ -13,7 +13,7 @@ def show_home_page():
         page_title="The Forge - Home",
         page_icon="🔨",
         layout="wide",
-        initial_sidebar_state="collapsed"
+        initial_sidebar_state="expanded"
     )
     
     # Custom CSS for homepage
@@ -71,43 +71,6 @@ def show_home_page():
             margin: 0;
         }
         
-        .metrics-container {
-            background: linear-gradient(135deg, #2d2d2d 0%, #3a3a3a 100%);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin: 2rem 0;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-        }
-        
-        .metric-card {
-            background: #4a4a4a;
-            border-radius: 8px;
-            padding: 1rem;
-            text-align: center;
-            border: 1px solid #505050;
-        }
-        
-        .metric-value {
-            color: #ff6b35;
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-        }
-        
-        .metric-label {
-            color: #b0b0b0;
-            font-size: 0.9rem;
-        }
-        
-        .footer {
-            text-align: center;
-            padding: 2rem 0;
-            color: #808080;
-            font-size: 0.9rem;
-            border-top: 1px solid #404040;
-            margin-top: 3rem;
-        }
-        
         .whats-new {
             background: linear-gradient(135deg, #2d2d2d 0%, #3a3a3a 100%);
             border-radius: 12px;
@@ -134,6 +97,15 @@ def show_home_page():
             color: #b0b0b0;
             font-size: 0.9rem;
         }
+        
+        .footer {
+            text-align: center;
+            padding: 2rem 0;
+            color: #808080;
+            font-size: 0.9rem;
+            border-top: 1px solid #404040;
+            margin-top: 3rem;
+        }
     </style>
     """, unsafe_allow_html=True)
     
@@ -141,124 +113,79 @@ def show_home_page():
     st.markdown('''
         <div class="home-header">
             <h1>🔨 The Forge</h1>
-            <p>Advanced Schema Transformation & Mapping Tool</p>
+            <p>Professional Schema Transformation & Integration Toolkit</p>
         </div>
     ''', unsafe_allow_html=True)
     
     # Tool Cards Section
-    st.markdown("### 🛠️ Available Tools")
-    st.markdown("Choose a tool to get started:")
+    st.markdown("### 🛠️ Core Integration Tools")
+    st.markdown("Essential tools for schema transformation and integration workflows:")
     
     col1, col2, col3 = st.columns(3)
     
     with col1:
         if st.button("📋 Schema to Excel", key="home_schema_excel", use_container_width=True):
-            st.session_state.tool = "Schema to Excel"
+            st.session_state.current_page = "Schema to Excel"
             st.rerun()
         
         st.markdown("""
         <div class="tool-card">
             <h3>📋 Schema to Excel</h3>
-            <p>Convert XSD, XML, and JSON Schema files to Excel format for easy analysis and documentation.</p>
+            <p>Convert XSD, XML, and JSON Schema files to Excel format for documentation and analysis. Supports complex nested structures and array types.</p>
         </div>
         """, unsafe_allow_html=True)
     
     with col2:
         if st.button("🔧 WSDL to XSD", key="home_wsdl_xsd", use_container_width=True):
-            st.session_state.tool = "WSDL to XSD"
+            st.session_state.current_page = "WSDL to XSD"
             st.rerun()
         
         st.markdown("""
         <div class="tool-card">
             <h3>🔧 WSDL to XSD</h3>
-            <p>Extract and convert WSDL files to XSD schemas for web service integration.</p>
+            <p>Extract and convert WSDL files to XSD schemas for web service integration and SOAP API development.</p>
         </div>
         """, unsafe_allow_html=True)
     
     with col3:
         if st.button("📊 Schema Mapping", key="home_mapping", use_container_width=True):
-            st.session_state.tool = "Schema Mapping"
+            st.session_state.current_page = "Schema Mapping"
             st.rerun()
         
         st.markdown("""
         <div class="tool-card">
             <h3>📊 Schema Mapping</h3>
-            <p>Create mappings between different schema formats with intelligent field matching.</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # Metrics Section
-    st.markdown("### 📊 Usage Statistics")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.markdown("""
-        <div class="metrics-container">
-            <div class="metric-card">
-                <div class="metric-value">1,247</div>
-                <div class="metric-label">Schemas Converted</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("""
-        <div class="metrics-container">
-            <div class="metric-card">
-                <div class="metric-value">856</div>
-                <div class="metric-label">Excel Files Generated</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown("""
-        <div class="metrics-container">
-            <div class="metric-card">
-                <div class="metric-value">342</div>
-                <div class="metric-label">WSDL Files Processed</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col4:
-        st.markdown("""
-        <div class="metrics-container">
-            <div class="metric-card">
-                <div class="metric-value">189</div>
-                <div class="metric-label">Schema Mappings Created</div>
-            </div>
+            <p>Create intelligent field mappings between different schema formats with configurable similarity thresholds and comprehensive mapping documentation.</p>
         </div>
         """, unsafe_allow_html=True)
     
     # What's New Section
-    with st.expander("🆕 What's New", expanded=False):
+    with st.expander("🆕 Recent Updates", expanded=False):
         st.markdown("""
         <div class="whats-new">
             <div class="feature-item">
                 <div class="feature-title">🎯 Enhanced Schema Mapping</div>
-                <div class="feature-desc">Improved mapping algorithm with configurable minimum match threshold and better field matching accuracy.</div>
+                <div class="feature-desc">Improved mapping algorithm with configurable minimum match threshold (20-100%) and intelligent field matching for better accuracy.</div>
             </div>
             
             <div class="feature-item">
-                <div class="feature-title">📄 JSON Schema Support</div>
-                <div class="feature-desc">All tools now support JSON Schema format alongside XSD and XML schemas.</div>
+                <div class="feature-title">📄 Multi-Format Schema Support</div>
+                <div class="feature-desc">All tools now support XSD, XML, JSON Schema, and WSDL formats for comprehensive schema transformation workflows.</div>
             </div>
             
             <div class="feature-item">
-                <div class="feature-title">🔧 WSDL to XSD Extraction</div>
-                <div class="feature-desc">New tool for extracting XSD schemas from WSDL files with improved parsing capabilities.</div>
+                <div class="feature-title">🔧 Advanced WSDL Processing</div>
+                <div class="feature-desc">Enhanced WSDL to XSD extraction with improved parsing capabilities and better handling of complex web service definitions.</div>
             </div>
             
             <div class="feature-item">
                 <div class="feature-title">📊 Excel Export Improvements</div>
-                <div class="feature-desc">Enhanced Excel output with better formatting, nested structure handling, and array type support.</div>
+                <div class="feature-desc">Enhanced Excel output with proper nested structure handling, array type support, and improved formatting for documentation.</div>
             </div>
             
             <div class="feature-item">
-                <div class="feature-title">🎨 Modern UI Design</div>
-                <div class="feature-desc">Completely redesigned interface with forge-themed styling and improved user experience.</div>
+                <div class="feature-title">⚡ Performance Optimizations</div>
+                <div class="feature-desc">Improved processing speed and memory efficiency for large schema files and complex transformations.</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -266,8 +193,8 @@ def show_home_page():
     # Footer
     st.markdown("""
         <div class="footer">
-            <p>The Forge v1.0.0 – Powered by Streamlit</p>
-            <p>Forged with 🔥 for schema transformation</p>
+            <p>The Forge v1.0.0 – Professional Integration Toolkit</p>
+            <p>Designed for Integration Architects</p>
         </div>
     """, unsafe_allow_html=True)
 
