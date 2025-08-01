@@ -108,6 +108,10 @@ def show_home_page():
                 <h3>📊 Schema Mapping</h3>
                 <p>Create intelligent field mappings between different schema formats with configurable similarity thresholds.</p>
             </div>
+            <div class="tool-card">
+                <h3>🔄 Converter</h3>
+                <p>Convert between JSON examples, JSON schemas, XML examples, and XSD schemas with comprehensive validation.</p>
+            </div>
 
         </div>
     </div>

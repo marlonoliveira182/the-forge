@@ -23,7 +23,7 @@ from services.excel_mapping_service import ExcelMappingService
 from services.json_to_excel_service import JSONToExcelService
 from services.case_converter_service import pascal_to_camel, camel_to_pascal
 
-from services.json_example_to_schema_service import JSONExampleToSchemaService
+from services.converter_service import ConverterService
 
 # Import homepage
 from homepage import show_home_page
@@ -431,7 +431,7 @@ def get_services():
         'mapping_service': ExcelMappingService(),
         'json_to_excel': JSONToExcelService(),
 
-        'json_example_to_schema': JSONExampleToSchemaService()
+        'converter': ConverterService()
     }
 
 def main():
@@ -472,8 +472,8 @@ def main():
     
 
     
-    if st.sidebar.button("📝 JSON Example to Schema", key="nav_json_schema", use_container_width=True):
-        st.session_state.current_page = "JSON Example to Schema"
+    if st.sidebar.button("🔄 Converter", key="nav_converter", use_container_width=True):
+        st.session_state.current_page = "Converter"
     
     if st.sidebar.button("ℹ️ About", key="nav_about", use_container_width=True):
         st.session_state.current_page = "About"
@@ -496,8 +496,8 @@ def main():
     elif st.session_state.current_page == "Schema to Excel":
         show_schema_to_excel_page(services)
 
-    elif st.session_state.current_page == "JSON Example to Schema":
-        show_json_example_to_schema_page(services)
+    elif st.session_state.current_page == "Converter":
+        show_converter_page(services)
     elif st.session_state.current_page == "About":
         show_about_page()
 
@@ -511,6 +511,24 @@ def show_mapping_page(services):
     
     **New Feature**: JSON Examples are automatically converted to schemas for mapping!
     """)
+    
+    # Schema type selection
+    st.markdown("### 🎯 Schema Type Selection")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        source_schema_type = st.selectbox(
+            "Source Schema Type",
+            ["XSD", "JSON Schema"],
+            help="Select the type of your source schema"
+        )
+    
+    with col2:
+        target_schema_type = st.selectbox(
+            "Target Schema Type", 
+            ["XSD", "JSON Schema"],
+            help="Select the type of your target schema"
+        )
     
     col1, col2 = st.columns(2)
     
@@ -818,118 +836,254 @@ def show_about_page():
     """)
 
 
-def show_json_example_to_schema_page(services):
-    st.markdown('<div class="section-header"><h2>📝 JSON Example to Schema</h2></div>', unsafe_allow_html=True)
+def show_converter_page(services):
+    """
+    Display the converter page with all conversion options.
+    """
+    st.markdown('<div class="section-header"><h2>🔄 Converter</h2></div>', unsafe_allow_html=True)
     
     st.markdown("""
-    Generate JSON schemas from JSON examples. Upload a JSON example file to automatically extract the structure and generate a comprehensive JSON schema.
-    The generated schema will avoid repeating array fields and handle complex nested structures properly.
+    Convert between different schema and example formats. Choose from the available conversion options below.
     """)
     
-    col1, col2 = st.columns(2)
+    # Get converter service
+    converter_service = services['converter']
+    supported_conversions = converter_service.get_supported_conversions()
     
-    with col1:
-        st.markdown("### 📤 JSON Example")
-        json_file = st.file_uploader(
-            "Upload JSON example file",
-            type=['json'],
-            key="json_example_uploader",
-            help="Upload your JSON example file"
+    # Conversion type selection
+    conversion_type = st.selectbox(
+        "Select Conversion Type",
+        list(supported_conversions.keys()),
+        format_func=lambda x: supported_conversions[x]["name"],
+        help="Choose the type of conversion you want to perform"
+    )
+    
+    # Show conversion details
+    if conversion_type:
+        conversion_info = supported_conversions[conversion_type]
+        help_info = converter_service.get_conversion_help(conversion_type)
+        
+        st.markdown(f"### 📋 {conversion_info['name']}")
+        st.markdown(f"**Description:** {conversion_info['description']}")
+        st.markdown(f"**Input:** {conversion_info['input_type']} → **Output:** {conversion_info['output_type']}")
+        
+        # Show help information
+        with st.expander("ℹ️ Conversion Help"):
+            st.markdown(f"**Input Format:** {help_info.get('input_format', 'N/A')}")
+            st.markdown(f"**Output Format:** {help_info.get('output_format', 'N/A')}")
+            st.markdown(f"**Features:** {help_info.get('features', 'N/A')}")
+            st.markdown(f"**Example:** `{help_info.get('example', 'N/A')}`")
+        
+        # File upload
+        st.markdown("### 📤 Input File")
+        uploaded_file = st.file_uploader(
+            f"Upload {conversion_info['input_type']} file",
+            type=['json', 'xml', 'xsd'],
+            key=f"converter_uploader_{conversion_type}",
+            help=f"Upload your {conversion_info['input_type']} file"
         )
         
-        if json_file:
-            st.markdown(f'<div class="success-message">✅ Uploaded: {json_file.name}</div>', unsafe_allow_html=True)
-            # Show file preview
-            content = json_file.read()
-            json_file.seek(0)  # Reset file pointer
+        if uploaded_file:
+            st.markdown(f'<div class="success-message">✅ Uploaded: {uploaded_file.name}</div>', unsafe_allow_html=True)
             
-            try:
-                json_data = json.loads(content.decode('utf-8'))
-                st.markdown("#### 📋 Example Preview")
-                st.json(json_data)
-            except json.JSONDecodeError as e:
-                st.markdown(f'<div class="error-message">❌ Invalid JSON file: {str(e)}</div>', unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("### ⚙️ Generation Options")
-        
-        schema_name = st.text_input(
-            "Schema Name",
-            value="GeneratedSchema",
-            help="Name for the generated JSON schema"
-        )
-        
-        validate_schema = st.checkbox(
-            "Validate Generated Schema",
-            value=True,
-            help="Validate the generated schema using jsonschema library"
-        )
-        
-        show_statistics = st.checkbox(
-            "Show Schema Statistics",
-            value=True,
-            help="Display statistics about the generated schema"
-        )
-    
-    # Process button
-    if st.button("🔨 Generate Schema", type="primary", use_container_width=True):
-        if json_file:
-            try:
-                with st.spinner("Generating schema from JSON example..."):
-                    # Create temporary file
-                    with tempfile.NamedTemporaryFile(delete=False, suffix='.json') as temp_file:
-                        temp_file.write(json_file.read())
-                        temp_file_path = temp_file.name
+            # Show file preview
+            content = uploaded_file.read()
+            uploaded_file.seek(0)  # Reset file pointer
+            
+            with st.expander("📄 File Preview"):
+                try:
+                    decoded_content = content.decode('utf-8')
+                    preview = decoded_content[:1000] + "..." if len(decoded_content) > 1000 else decoded_content
                     
-                    # Generate schema
-                    json_service = services['json_example_to_schema']
-                    schema = json_service.generate_schema_from_file(temp_file_path, schema_name)
-                    
-                    # Validate schema if requested
-                    if validate_schema:
-                        is_valid = json_service.validate_schema(schema)
-                        if is_valid:
-                            st.markdown('<div class="success-message">✅ Generated schema is valid!</div>', unsafe_allow_html=True)
+                    if uploaded_file.name.lower().endswith('.json'):
+                        st.code(preview, language="json")
+                    else:
+                        st.code(preview, language="xml")
+                except UnicodeDecodeError:
+                    st.code(content[:500], language="text")
+        
+        # Conversion options
+        st.markdown("### ⚙️ Conversion Options")
+        
+        if conversion_type == "json_to_schema":
+            schema_name = st.text_input(
+                "Schema Name",
+                value="GeneratedSchema",
+                help="Name for the generated JSON schema"
+            )
+            
+            validate_schema = st.checkbox(
+                "Validate Generated Schema",
+                value=True,
+                help="Validate the generated schema using jsonschema library"
+            )
+            
+        elif conversion_type == "xml_to_xsd":
+            schema_name = st.text_input(
+                "Schema Name",
+                value="GeneratedSchema",
+                help="Name for the generated XSD schema"
+            )
+            
+            validate_xsd = st.checkbox(
+                "Validate Generated XSD",
+                value=True,
+                help="Validate the generated XSD schema"
+            )
+            
+        elif conversion_type == "xsd_to_xml":
+            root_element_name = st.text_input(
+                "Root Element Name (Optional)",
+                value="",
+                help="Specify the root element name (if not specified, will be inferred from XSD)"
+            )
+            
+        elif conversion_type == "json_schema_to_json":
+            num_examples = st.number_input(
+                "Number of Examples",
+                min_value=1,
+                max_value=10,
+                value=1,
+                help="Number of JSON examples to generate"
+            )
+            
+            validate_examples = st.checkbox(
+                "Validate Generated Examples",
+                value=True,
+                help="Validate the generated examples against the schema"
+            )
+        
+        # Process conversion
+        if st.button("🔄 Convert", type="primary", use_container_width=True):
+            if uploaded_file:
+                try:
+                    with st.spinner(f"Converting {conversion_info['input_type']} to {conversion_info['output_type']}..."):
+                        # Create temporary file
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_file.name.split('.')[-1]}") as temp_file:
+                            temp_file.write(uploaded_file.read())
+                            temp_file_path = temp_file.name
+                        
+                        # Prepare conversion parameters
+                        conversion_params = {}
+                        if conversion_type == "json_to_schema":
+                            conversion_params['schema_name'] = schema_name
+                        elif conversion_type == "xml_to_xsd":
+                            conversion_params['schema_name'] = schema_name
+                        elif conversion_type == "xsd_to_xml":
+                            if root_element_name:
+                                conversion_params['root_element_name'] = root_element_name
+                        elif conversion_type == "json_schema_to_json":
+                            conversion_params['num_examples'] = num_examples
+                        
+                        # Perform conversion
+                        result = converter_service.process_file_conversion(
+                            temp_file_path, 
+                            conversion_type, 
+                            **conversion_params
+                        )
+                        
+                        # Validate result if requested
+                        if conversion_type == "json_to_schema" and validate_schema:
+                            is_valid = converter_service.validate_conversion(conversion_type, None, result)
+                            if is_valid:
+                                st.markdown('<div class="success-message">✅ Generated schema is valid!</div>', unsafe_allow_html=True)
+                            else:
+                                st.markdown('<div class="warning-message">⚠️ Generated schema validation failed</div>', unsafe_allow_html=True)
+                        
+                        elif conversion_type == "xml_to_xsd" and validate_xsd:
+                            is_valid = converter_service.validate_conversion(conversion_type, None, result)
+                            if is_valid:
+                                st.markdown('<div class="success-message">✅ Generated XSD is valid!</div>', unsafe_allow_html=True)
+                            else:
+                                st.markdown('<div class="warning-message">⚠️ Generated XSD validation failed</div>', unsafe_allow_html=True)
+                        
+                        elif conversion_type == "json_schema_to_json" and validate_examples:
+                            is_valid = converter_service.validate_conversion(conversion_type, None, result)
+                            if is_valid:
+                                st.markdown('<div class="success-message">✅ Generated examples are valid!</div>', unsafe_allow_html=True)
+                            else:
+                                st.markdown('<div class="warning-message">⚠️ Generated examples validation failed</div>', unsafe_allow_html=True)
+                        
+                        # Show statistics
+                        stats = converter_service.get_conversion_statistics(conversion_type, result)
+                        if stats:
+                            st.markdown("#### 📊 Conversion Statistics")
+                            col1, col2, col3 = st.columns(3)
+                            
+                            if conversion_type == "json_to_schema":
+                                with col1:
+                                    st.metric("Total Properties", stats.get('total_properties', 0))
+                                    st.metric("Required Properties", stats.get('required_properties', 0))
+                                with col2:
+                                    st.metric("Object Properties", stats.get('object_properties', 0))
+                                    st.metric("Array Properties", stats.get('array_properties', 0))
+                                with col3:
+                                    st.metric("Primitive Properties", stats.get('primitive_properties', 0))
+                                    st.metric("Max Depth", stats.get('max_depth', 0))
+                            
+                            elif conversion_type == "xml_to_xsd":
+                                with col1:
+                                    st.metric("Total Elements", stats.get('total_elements', 0))
+                                    st.metric("Complex Types", stats.get('complex_types', 0))
+                                with col2:
+                                    st.metric("Simple Types", stats.get('simple_types', 0))
+                                    st.metric("Attributes", stats.get('attributes', 0))
+                                with col3:
+                                    st.metric("Max Depth", stats.get('max_depth', 0))
+                            
+                            elif conversion_type == "xsd_to_xml":
+                                with col1:
+                                    st.metric("Total Elements", stats.get('total_elements', 0))
+                                    st.metric("Attributes", stats.get('attributes', 0))
+                                with col2:
+                                    st.metric("Text Elements", stats.get('text_elements', 0))
+                                    st.metric("Max Depth", stats.get('max_depth', 0))
+                            
+                            elif conversion_type == "json_schema_to_json":
+                                with col1:
+                                    st.metric("Total Examples", stats.get('total_examples', 0))
+                                    st.metric("Avg Properties", stats.get('avg_object_properties', 0))
+                                with col2:
+                                    st.metric("Avg Array Length", stats.get('avg_array_length', 0))
+                                    st.metric("Max Depth", stats.get('max_depth', 0))
+                        
+                        # Display result
+                        st.markdown("#### 📄 Conversion Result")
+                        
+                        if conversion_type in ["json_to_schema", "json_schema_to_json"]:
+                            st.json(result)
                         else:
-                            st.markdown('<div class="warning-message">⚠️ Generated schema validation failed</div>', unsafe_allow_html=True)
-                    
-                    # Show statistics if requested
-                    if show_statistics:
-                        stats = json_service.get_schema_statistics(schema)
-                        st.markdown("#### 📊 Schema Statistics")
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("Total Properties", stats['total_properties'])
-                            st.metric("Required Properties", stats['required_properties'])
-                        with col2:
-                            st.metric("Object Properties", stats['object_properties'])
-                            st.metric("Array Properties", stats['array_properties'])
-                        with col3:
-                            st.metric("Primitive Properties", stats['primitive_properties'])
-                            st.metric("Max Depth", stats['max_depth'])
-                    
-                    # Display generated schema
-                    st.markdown("#### 📄 Generated JSON Schema")
-                    st.json(schema)
-                    
-                    # Download button
-                    schema_json = json.dumps(schema, indent=2, ensure_ascii=False)
-                    st.download_button(
-                        label="📥 Download Schema",
-                        data=schema_json,
-                        file_name=f"{schema_name}.json",
-                        mime="application/json",
-                        use_container_width=True
-                    )
-                    
-                    # Clean up temporary file
-                    os.unlink(temp_file_path)
-                    
-            except Exception as e:
-                st.markdown(f'<div class="error-message">❌ Error generating schema: {str(e)}</div>', unsafe_allow_html=True)
-                st.error(f"Technical details: {str(e)}")
-        else:
-            st.markdown('<div class="warning-message">⚠️ Please upload a JSON example file to generate schema</div>', unsafe_allow_html=True)
+                            st.code(result, language="xml")
+                        
+                        # Download button
+                        if conversion_type in ["json_to_schema", "json_schema_to_json"]:
+                            result_json = json.dumps(result, indent=2, ensure_ascii=False)
+                            file_extension = "json"
+                            mime_type = "application/json"
+                        else:
+                            result_json = result
+                            file_extension = "xsd" if conversion_type == "xml_to_xsd" else "xml"
+                            mime_type = "application/xml"
+                        
+                        st.download_button(
+                            label="📥 Download Result",
+                            data=result_json,
+                            file_name=f"converted.{file_extension}",
+                            mime=mime_type,
+                            use_container_width=True
+                        )
+                        
+                        # Clean up temporary file
+                        os.unlink(temp_file_path)
+                        
+                except Exception as e:
+                    st.markdown(f'<div class="error-message">❌ Error during conversion: {str(e)}</div>', unsafe_allow_html=True)
+                    st.error(f"Technical details: {str(e)}")
+            else:
+                st.markdown('<div class="warning-message">⚠️ Please upload a file to convert</div>', unsafe_allow_html=True)
+
+
+
 
 def is_json_example(file):
     """
@@ -987,10 +1141,10 @@ def convert_json_example_if_needed(file_path, services):
             return file_path  # Already a schema
         
         # It's a JSON example, convert to schema
-        json_example_service = services.get('json_example_to_schema')
-        if json_example_service:
+        converter_service = services.get('converter')
+        if converter_service:
             # Generate schema from the JSON example
-            schema = json_example_service.generate_schema_from_data(json_data, "GeneratedSchema")
+            schema = converter_service.convert_json_example_to_schema(json_data, "GeneratedSchema")
             
             # Create a temporary schema file
             import tempfile
