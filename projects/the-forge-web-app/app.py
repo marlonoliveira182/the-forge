@@ -450,7 +450,7 @@ def get_services():
         'excel_exporter': ExcelExporter(),
         'mapping_service': ExcelMappingService(),
         'json_to_excel': JSONToExcelService(),
-                          'ai_description_generator': AIDescriptionGenerator(enable_ai=True)  # AI enabled by default
+        'ai_description_generator': AIDescriptionGenerator(enable_ai=True)  # AI enabled by default
     }
 
 def main():
