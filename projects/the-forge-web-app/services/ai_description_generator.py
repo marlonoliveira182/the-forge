@@ -208,6 +208,8 @@ class AIDescriptionGenerator:
             return self._parse_json_file(file_path)
         elif normalized_type in ['json_schema', 'jsonschema']:
             return self._parse_json_schema_file(file_path)
+        elif normalized_type == 'json_example':
+            return self._parse_json_example_file(file_path)
         elif normalized_type == 'wsdl':
             return self._parse_wsdl_file(file_path)
         elif normalized_type == 'xml':
@@ -368,6 +370,126 @@ class AIDescriptionGenerator:
         except Exception as e:
             self.logger.error(f"Error parsing JSON Schema file: {e}")
             raise
+    
+    def _parse_json_example_file(self, file_path: str) -> Dict[str, Any]:
+        """Parse JSON example file and extract structure information."""
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            structures = []
+            
+            # Extract structure from JSON example
+            fields = self._extract_json_structure_fields(data, 'root')
+            
+            structure = SchemaStructure(
+                name='JSON Example Structure',
+                type='json_example',
+                fields=fields,
+                description='Structure extracted from JSON example'
+            )
+            structures.append(structure)
+            
+            return {
+                'file_type': 'JSON Example',
+                'structures': [self._structure_to_dict(s) for s in structures],
+                'total_structures': len(structures),
+                'example_info': {
+                    'data_type': type(data).__name__,
+                    'is_array': isinstance(data, list),
+                    'is_object': isinstance(data, dict)
+                }
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error parsing JSON example file: {e}")
+            raise
+    
+    def _extract_json_structure_fields(self, data: Any, path: str) -> List[SchemaField]:
+        """Extract structure fields from JSON data, avoiding repetition of array fields."""
+        fields = []
+        processed_arrays = set()
+        
+        def extract_fields_recursive(data_part: Any, current_path: str, level: int = 0):
+            if level > 10:  # Prevent infinite recursion
+                return
+            
+            if isinstance(data_part, dict):
+                for key, value in data_part.items():
+                    field_path = f"{current_path}.{key}" if current_path else key
+                    field_type = self._determine_field_type(value)
+                    
+                    field = SchemaField(
+                        name=key,
+                        type=field_type,
+                        description=f"Field from JSON example at path: {field_path}",
+                        required=True  # Assume required in examples
+                    )
+                    fields.append(field)
+                    
+                    # Recursively process nested objects
+                    if isinstance(value, (dict, list)):
+                        extract_fields_recursive(value, field_path, level + 1)
+            
+            elif isinstance(data_part, list) and data_part:
+                # Check if we've already processed this array structure
+                array_key = f"{current_path}:{len(data_part)}"
+                if array_key not in processed_arrays:
+                    processed_arrays.add(array_key)
+                    
+                    # Process first item as representative
+                    first_item = data_part[0]
+                    extract_fields_recursive(first_item, f"{current_path}[0]", level + 1)
+                    
+                    # Check if all items have uniform structure
+                    uniform_structure = all(
+                        self._compare_json_structures(first_item, item) 
+                        for item in data_part[1:]
+                    )
+                    
+                    if not uniform_structure:
+                        # Process additional unique structures
+                        for i, item in enumerate(data_part[1:], 1):
+                            if not self._compare_json_structures(first_item, item):
+                                extract_fields_recursive(item, f"{current_path}[{i}]", level + 1)
+        
+        extract_fields_recursive(data, path)
+        return fields
+    
+    def _determine_field_type(self, value: Any) -> str:
+        """Determine the JSON schema type from a value."""
+        if isinstance(value, bool):
+            return 'boolean'
+        elif isinstance(value, int):
+            return 'integer'
+        elif isinstance(value, float):
+            return 'number'
+        elif isinstance(value, str):
+            return 'string'
+        elif isinstance(value, list):
+            return 'array'
+        elif isinstance(value, dict):
+            return 'object'
+        else:
+            return 'string'
+    
+    def _compare_json_structures(self, obj1: Any, obj2: Any) -> bool:
+        """Compare if two JSON objects have the same structure."""
+        if type(obj1) != type(obj2):
+            return False
+        
+        if isinstance(obj1, dict):
+            if set(obj1.keys()) != set(obj2.keys()):
+                return False
+            return all(self._compare_json_structures(obj1[k], obj2[k]) for k in obj1.keys())
+        
+        elif isinstance(obj1, list):
+            if len(obj1) != len(obj2):
+                return False
+            return all(self._compare_json_structures(obj1[i], obj2[i]) for i in range(len(obj1)))
+        
+        else:
+            return True
     
     def _parse_wsdl_file(self, file_path: str) -> Dict[str, Any]:
         """Parse WSDL file and extract service information."""
@@ -577,6 +699,9 @@ class AIDescriptionGenerator:
         elif file_type == 'JSON':
             return f"This data structure contains business information for system integration and data processing workflows."
             
+        elif file_type == 'JSON Example':
+            return f"This JSON example demonstrates business data structure for system integration and schema generation."
+            
         elif file_type == 'XML':
             return f"This data structure contains business information for system integration and data exchange between applications."
             
@@ -684,6 +809,19 @@ class AIDescriptionGenerator:
             
             description_parts.append("This integration artifact supports real-time data processing and dynamic business workflow management.")
             description_parts.append("It enables seamless integration between web-based systems, mobile applications, and cloud services.")
+            
+        elif file_type == 'JSON Example':
+            description_parts.append("This JSON example demonstrates business data structure patterns for automated schema generation and system integration.")
+            description_parts.append("It provides concrete data instances that can be used to infer schema definitions and validation rules.")
+            
+            example_info = schema_info.get('example_info', {})
+            if example_info.get('is_array'):
+                description_parts.append("The example contains array data structures that enable batch processing and collection management.")
+            elif example_info.get('is_object'):
+                description_parts.append("The example contains object data structures that support complex business entity modeling.")
+            
+            description_parts.append("This integration artifact enables automated schema generation from real-world data examples.")
+            description_parts.append("It facilitates rapid prototyping and schema evolution based on actual data patterns.")
             
         elif file_type == 'XML':
             description_parts.append("This XML data structure provides structured business information exchange with comprehensive metadata and validation capabilities.")

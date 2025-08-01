@@ -23,6 +23,7 @@ from services.excel_mapping_service import ExcelMappingService
 from services.json_to_excel_service import JSONToExcelService
 from services.case_converter_service import pascal_to_camel, camel_to_pascal
 from services.ai_description_generator import AIDescriptionGenerator
+from services.json_example_to_schema_service import JSONExampleToSchemaService
 
 # Import homepage
 from homepage import show_home_page
@@ -450,7 +451,8 @@ def get_services():
         'excel_exporter': ExcelExporter(),
         'mapping_service': ExcelMappingService(),
         'json_to_excel': JSONToExcelService(),
-        'ai_description_generator': AIDescriptionGenerator(enable_ai=True)  # AI enabled by default
+        'ai_description_generator': AIDescriptionGenerator(enable_ai=True),  # AI enabled by default
+        'json_example_to_schema': JSONExampleToSchemaService()
     }
 
 def main():
@@ -492,6 +494,9 @@ def main():
     if st.sidebar.button("🤖 AI Description Generator", key="nav_ai_desc", use_container_width=True):
         st.session_state.current_page = "AI Description Generator"
     
+    if st.sidebar.button("📝 JSON Example to Schema", key="nav_json_schema", use_container_width=True):
+        st.session_state.current_page = "JSON Example to Schema"
+    
     if st.sidebar.button("ℹ️ About", key="nav_about", use_container_width=True):
         st.session_state.current_page = "About"
     
@@ -514,6 +519,8 @@ def main():
         show_schema_to_excel_page(services)
     elif st.session_state.current_page == "AI Description Generator":
         show_ai_description_page(services)
+    elif st.session_state.current_page == "JSON Example to Schema":
+        show_json_example_to_schema_page(services)
     elif st.session_state.current_page == "About":
         show_about_page()
 
@@ -862,6 +869,18 @@ def show_ai_description_page(services):
         }
         file_type = file_type_mapping.get(file_extension, 'json_schema')
         
+        # For JSON files, try to detect if it's a schema or example
+        if file_extension == 'json':
+            try:
+                json_content = json.loads(content.decode('utf-8'))
+                # Check if it has schema-like properties
+                if '$schema' in json_content or 'properties' in json_content:
+                    file_type = 'json_schema'
+                else:
+                    file_type = 'json_example'
+            except:
+                file_type = 'json_schema'  # Default fallback
+        
         # Show file preview
         content = uploaded_file.read()
         uploaded_file.seek(0)  # Reset file pointer
@@ -951,6 +970,120 @@ def show_ai_description_page(services):
                     st.error(f"Technical details: {str(e)}")
     else:
         st.markdown('<div class="warning-message">⚠️ Please upload a schema file to generate descriptions</div>', unsafe_allow_html=True)
+
+
+def show_json_example_to_schema_page(services):
+    st.markdown('<div class="section-header"><h2>📝 JSON Example to Schema</h2></div>', unsafe_allow_html=True)
+    
+    st.markdown("""
+    Generate JSON schemas from JSON examples. Upload a JSON example file to automatically extract the structure and generate a comprehensive JSON schema.
+    The generated schema will avoid repeating array fields and handle complex nested structures properly.
+    """)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### 📤 JSON Example")
+        json_file = st.file_uploader(
+            "Upload JSON example file",
+            type=['json'],
+            key="json_example_uploader",
+            help="Upload your JSON example file"
+        )
+        
+        if json_file:
+            st.markdown(f'<div class="success-message">✅ Uploaded: {json_file.name}</div>', unsafe_allow_html=True)
+            # Show file preview
+            content = json_file.read()
+            json_file.seek(0)  # Reset file pointer
+            
+            try:
+                json_data = json.loads(content.decode('utf-8'))
+                st.markdown("#### 📋 Example Preview")
+                st.json(json_data)
+            except json.JSONDecodeError as e:
+                st.markdown(f'<div class="error-message">❌ Invalid JSON file: {str(e)}</div>', unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("### ⚙️ Generation Options")
+        
+        schema_name = st.text_input(
+            "Schema Name",
+            value="GeneratedSchema",
+            help="Name for the generated JSON schema"
+        )
+        
+        validate_schema = st.checkbox(
+            "Validate Generated Schema",
+            value=True,
+            help="Validate the generated schema using jsonschema library"
+        )
+        
+        show_statistics = st.checkbox(
+            "Show Schema Statistics",
+            value=True,
+            help="Display statistics about the generated schema"
+        )
+    
+    # Process button
+    if st.button("🔨 Generate Schema", type="primary", use_container_width=True):
+        if json_file:
+            try:
+                with st.spinner("Generating schema from JSON example..."):
+                    # Create temporary file
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.json') as temp_file:
+                        temp_file.write(json_file.read())
+                        temp_file_path = temp_file.name
+                    
+                    # Generate schema
+                    json_service = services['json_example_to_schema']
+                    schema = json_service.generate_schema_from_file(temp_file_path, schema_name)
+                    
+                    # Validate schema if requested
+                    if validate_schema:
+                        is_valid = json_service.validate_schema(schema)
+                        if is_valid:
+                            st.markdown('<div class="success-message">✅ Generated schema is valid!</div>', unsafe_allow_html=True)
+                        else:
+                            st.markdown('<div class="warning-message">⚠️ Generated schema validation failed</div>', unsafe_allow_html=True)
+                    
+                    # Show statistics if requested
+                    if show_statistics:
+                        stats = json_service.get_schema_statistics(schema)
+                        st.markdown("#### 📊 Schema Statistics")
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Total Properties", stats['total_properties'])
+                            st.metric("Required Properties", stats['required_properties'])
+                        with col2:
+                            st.metric("Object Properties", stats['object_properties'])
+                            st.metric("Array Properties", stats['array_properties'])
+                        with col3:
+                            st.metric("Primitive Properties", stats['primitive_properties'])
+                            st.metric("Max Depth", stats['max_depth'])
+                    
+                    # Display generated schema
+                    st.markdown("#### 📄 Generated JSON Schema")
+                    st.json(schema)
+                    
+                    # Download button
+                    schema_json = json.dumps(schema, indent=2, ensure_ascii=False)
+                    st.download_button(
+                        label="📥 Download Schema",
+                        data=schema_json,
+                        file_name=f"{schema_name}.json",
+                        mime="application/json",
+                        use_container_width=True
+                    )
+                    
+                    # Clean up temporary file
+                    os.unlink(temp_file_path)
+                    
+            except Exception as e:
+                st.markdown(f'<div class="error-message">❌ Error generating schema: {str(e)}</div>', unsafe_allow_html=True)
+                st.error(f"Technical details: {str(e)}")
+        else:
+            st.markdown('<div class="warning-message">⚠️ Please upload a JSON example file to generate schema</div>', unsafe_allow_html=True)
 
 def process_mapping(source_file, target_file, services, source_case="Original", target_case="Original", reorder_attributes=False, min_match_threshold=20):
     try:
