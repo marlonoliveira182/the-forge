@@ -530,7 +530,9 @@ def show_mapping_page(services):
     st.markdown('<div class="section-header"><h2>📊 Schema Mapping</h2></div>', unsafe_allow_html=True)
     
     st.markdown("""
-    Create field mappings between different schema formats. Upload source and target schema files to generate comprehensive mapping documentation.
+    Create field mappings between different schema formats. Upload source and target schema files (XSD, JSON Schema, or JSON Examples) to generate comprehensive mapping documentation.
+    
+    **New Feature**: JSON Examples are automatically converted to schemas for mapping!
     """)
     
     col1, col2 = st.columns(2)
@@ -541,7 +543,7 @@ def show_mapping_page(services):
             "Upload source schema file",
             type=['xsd', 'xml', 'json'],
             key="source_uploader",
-            help="Upload your source schema file (XSD, XML, or JSON Schema)"
+            help="Upload your source schema file (XSD, XML, JSON Schema, or JSON Example)"
         )
         
         if source_file:
@@ -567,7 +569,7 @@ def show_mapping_page(services):
             "Upload target schema file",
             type=['xsd', 'xml', 'json'],
             key="target_uploader",
-            help="Upload your target schema file (XSD, XML, or JSON Schema)"
+            help="Upload your target schema file (XSD, XML, JSON Schema, or JSON Example)"
         )
         
         if target_file:
@@ -610,6 +612,21 @@ def show_mapping_page(services):
         if source_file and target_file:
             with st.spinner("🔄 Generating mapping..."):
                 try:
+                    # Show conversion status for JSON examples
+                    source_is_example = is_json_example(source_file)
+                    target_is_example = is_json_example(target_file)
+                    
+                    if source_is_example or target_is_example:
+                        status_text = "Converting JSON examples to schemas..."
+                        if source_is_example and target_is_example:
+                            status_text = "Converting source and target JSON examples to schemas..."
+                        elif source_is_example:
+                            status_text = "Converting source JSON example to schema..."
+                        elif target_is_example:
+                            status_text = "Converting target JSON example to schema..."
+                        
+                        st.info(f"ℹ️ {status_text}")
+                    
                     result = process_mapping(source_file, target_file, services, source_case, target_case, reorder_attributes, min_match_threshold)
                     if result:
                         st.markdown('<div class="success-message">✅ Mapping generated successfully!</div>', unsafe_allow_html=True)
@@ -1085,6 +1102,82 @@ def show_json_example_to_schema_page(services):
         else:
             st.markdown('<div class="warning-message">⚠️ Please upload a JSON example file to generate schema</div>', unsafe_allow_html=True)
 
+def is_json_example(file):
+    """
+    Check if a file is a JSON example (not a schema).
+    Returns True if it's a JSON example, False otherwise.
+    """
+    try:
+        # Check if it's a JSON file
+        if not file.name.lower().endswith('.json'):
+            return False
+        
+        # Read the file content
+        content = file.read()
+        file.seek(0)  # Reset file pointer
+        
+        # Try to parse as JSON
+        try:
+            json_data = json.loads(content.decode('utf-8'))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return False
+        
+        # Check if it's already a JSON schema (has $schema or properties)
+        if isinstance(json_data, dict) and ('$schema' in json_data or 'properties' in json_data):
+            return False
+        
+        # It's a JSON example
+        return True
+        
+    except Exception:
+        return False
+
+
+def convert_json_example_if_needed(file_path, services):
+    """
+    Check if a JSON file is an example (not a schema) and convert it to a schema if needed.
+    Returns the original file path if it's already a schema, or a new schema file path if converted.
+    """
+    try:
+        # Check if it's a JSON file
+        if not file_path.lower().endswith('.json'):
+            return file_path
+        
+        # Read the file content
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Try to parse as JSON
+        try:
+            json_data = json.loads(content)
+        except json.JSONDecodeError:
+            return file_path  # Not valid JSON, return original path
+        
+        # Check if it's already a JSON schema (has $schema or properties)
+        if isinstance(json_data, dict) and ('$schema' in json_data or 'properties' in json_data):
+            return file_path  # Already a schema
+        
+        # It's a JSON example, convert to schema
+        json_example_service = services.get('json_example_to_schema')
+        if json_example_service:
+            # Generate schema from the JSON example
+            schema = json_example_service.generate_schema_from_data(json_data, "GeneratedSchema")
+            
+            # Create a temporary schema file
+            import tempfile
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json', encoding='utf-8') as temp_schema:
+                json.dump(schema, temp_schema, indent=2)
+                schema_path = temp_schema.name
+            
+            return schema_path
+        else:
+            return file_path  # Service not available, return original path
+            
+    except Exception as e:
+        # If any error occurs, return the original file path
+        return file_path
+
+
 def process_mapping(source_file, target_file, services, source_case="Original", target_case="Original", reorder_attributes=False, min_match_threshold=20):
     try:
         # Create temporary files
@@ -1096,12 +1189,18 @@ def process_mapping(source_file, target_file, services, source_case="Original", 
             target_temp.write(target_file.read())
             target_temp_path = target_temp.name
         
-        # --- Unified schema parsing logic for both XSD and JSON Schema ---
+        # --- Enhanced schema parsing logic for XSD, JSON Schema, and JSON Examples ---
         
-        # Parse source schema (XSD or JSON Schema)
+        # Check if source file is a JSON example and convert to schema if needed
+        source_temp_path = convert_json_example_if_needed(source_temp_path, services)
+        
+        # Parse source schema (XSD, JSON Schema, or converted JSON Example)
         src_rows = parse_schema_file(source_temp_path, services)
         
-        # Parse target schema (XSD or JSON Schema)
+        # Check if target file is a JSON example and convert to schema if needed
+        target_temp_path = convert_json_example_if_needed(target_temp_path, services)
+        
+        # Parse target schema (XSD, JSON Schema, or converted JSON Example)
         tgt_rows = []
         if target_temp_path and os.path.exists(target_temp_path):
             tgt_rows = parse_schema_file(target_temp_path, services)
