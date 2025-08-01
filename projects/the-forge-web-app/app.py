@@ -23,6 +23,9 @@ from services.excel_mapping_service import ExcelMappingService
 from services.json_to_excel_service import JSONToExcelService
 from services.case_converter_service import pascal_to_camel, camel_to_pascal
 
+# Import homepage
+from homepage import show_home_page
+
 # Page configuration
 st.set_page_config(
     page_title="The Forge - Schema Transformation Tool",
