@@ -450,7 +450,7 @@ def get_services():
         'excel_exporter': ExcelExporter(),
         'mapping_service': ExcelMappingService(),
         'json_to_excel': JSONToExcelService(),
-        'ai_description_generator': AIDescriptionGenerator()
+                          'ai_description_generator': AIDescriptionGenerator(enable_ai=True)  # AI enabled by default
     }
 
 def main():
@@ -822,8 +822,15 @@ def show_ai_description_page(services):
     """
     st.markdown('<div class="section-header"><h2>🤖 AI Description Generator</h2></div>', unsafe_allow_html=True)
     
+                  # Show current status
+              ai_generator = services['ai_description_generator']
+              if ai_generator.enable_ai:
+                  st.info("🤖 AI Mode: Enabled (will use AI when possible, falls back to rule-based for reliability)")
+              else:
+                  st.info("⚡ Fast Mode: Rule-based generation only (instant results)")
+    
     st.markdown("""
-    Generate functional descriptions for integration artifacts using AI. Upload WSDL, XSD, JSON, XML, or JSON Schema files 
+    Generate functional descriptions for integration artifacts. Upload WSDL, XSD, JSON, XML, or JSON Schema files 
     to automatically generate short and detailed descriptions focused on business context and data flow.
     """)
     

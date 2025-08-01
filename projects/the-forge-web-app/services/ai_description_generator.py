@@ -4,10 +4,11 @@ import re
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 import logging
+import time
 
 # Free AI libraries for text generation
 try:
-    from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
+    from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM, AutoModelForSeq2SeqLM
     import torch
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
@@ -42,28 +43,65 @@ class AIDescriptionGenerator:
     from WSDL, XSD, JSON, XML, or JSON schema files.
     """
     
-    def __init__(self):
+    def __init__(self, enable_ai: bool = False):
         self.logger = logging.getLogger(__name__)
         self.text_generator = None
         self.tokenizer = None
         self.model = None
+        self._ai_initialized = False
+        self.enable_ai = enable_ai
         
-        # Initialize AI models if available
-        self._initialize_ai_models()
+        # Don't initialize AI models immediately - use lazy loading
+        if enable_ai:
+            self.logger.info("AIDescriptionGenerator initialized with AI enabled (models will be loaded on first use)")
+        else:
+            self.logger.info("AIDescriptionGenerator initialized with AI disabled (using rule-based generation only)")
     
     def _initialize_ai_models(self):
-        """Initialize AI models for text generation."""
+        """Initialize AI models for text generation (lazy loading)."""
+        if self._ai_initialized:
+            return
+            
         if TRANSFORMERS_AVAILABLE:
             try:
-                # Use a smaller model for faster processing
-                model_name = "facebook/bart-large-cnn"  # Good for summarization
-                self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-                self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
-                self.text_generator = pipeline("summarization", model=self.model, tokenizer=self.tokenizer)
-                self.logger.info("AI models initialized successfully")
+                start_time = time.time()
+                self.logger.info("Initializing AI models...")
+                
+                # Use a more suitable model for content generation
+                # Try to use a smaller generative model that's better for text generation
+                try:
+                    # Try a more suitable model for content generation
+                    model_name = "gpt2"  # Smaller, more reliable for text generation
+                    self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+                    self.model = AutoModelForCausalLM.from_pretrained(model_name)
+                    self.text_generator = pipeline("text-generation", model=self.model, tokenizer=self.tokenizer)
+                    self.logger.info("Using GPT-2 for content generation")
+                except Exception as e:
+                    self.logger.warning(f"GPT-2 failed, trying DialoGPT: {e}")
+                    try:
+                        model_name = "microsoft/DialoGPT-small"
+                        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+                        self.model = AutoModelForCausalLM.from_pretrained(model_name)
+                        self.text_generator = pipeline("text-generation", model=self.model, tokenizer=self.tokenizer)
+                        self.logger.info("Using DialoGPT-small for content generation")
+                    except Exception as e2:
+                        self.logger.warning(f"DialoGPT-small failed, falling back to BART: {e2}")
+                        # Fallback to BART but with better prompt engineering
+                        model_name = "facebook/bart-base"
+                        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+                        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+                        self.text_generator = pipeline("text2text-generation", model=self.model, tokenizer=self.tokenizer)
+                        self.logger.info("Using BART-base for content generation")
+                
+                init_time = time.time() - start_time
+                self.logger.info(f"AI models initialized successfully in {init_time:.2f}s")
+                self._ai_initialized = True
+                
             except Exception as e:
                 self.logger.warning(f"Could not initialize AI models: {e}")
                 self.text_generator = None
+        else:
+            self.logger.warning("Transformers library not available - using rule-based generation only")
     
     def generate_descriptions(self, file_path: str, file_type: str) -> Dict[str, str]:
         """
@@ -77,12 +115,23 @@ class AIDescriptionGenerator:
             Dictionary with 'short_description' and 'detailed_description'
         """
         try:
+            start_time = time.time()
+            
             # Parse the schema file
+            parse_start = time.time()
             schema_info = self._parse_schema_file(file_path, file_type)
+            parse_time = time.time() - parse_start
+            self.logger.info(f"Schema parsing completed in {parse_time:.3f}s")
             
             # Generate descriptions
+            gen_start = time.time()
             short_desc = self._generate_short_description(schema_info)
             detailed_desc = self._generate_detailed_description(schema_info)
+            gen_time = time.time() - gen_start
+            self.logger.info(f"Description generation completed in {gen_time:.3f}s")
+            
+            total_time = time.time() - start_time
+            self.logger.info(f"Total generation time: {total_time:.3f}s")
             
             return {
                 'short_description': short_desc,
@@ -482,15 +531,32 @@ class AIDescriptionGenerator:
             return f"This {file_type} file contains business data structures for system integration and information exchange."
     
     def _generate_detailed_description(self, schema_info: Dict[str, Any]) -> str:
-        """Generate a detailed functional description (5-10 sentences) using rule-based approach."""
+        """Generate a detailed functional description (5-10 sentences) using AI or rule-based approach."""
         file_type = schema_info.get('file_type', 'Unknown')
         structures = schema_info.get('structures', [])
         
         if not structures:
             return f"This {file_type} file does not contain any defined structures or is empty."
         
-        # Use rule-based generation as primary method
-        return self._generate_rule_based_description(schema_info)
+        # Use AI if enabled, otherwise use rule-based generation
+        if self.enable_ai and self._ai_initialized:
+            try:
+                # Build context for AI generation
+                context = self._build_ai_context(schema_info)
+                ai_result = self._generate_ai_description(context, file_type)
+                
+                if ai_result and ai_result != "AI generation completed but no meaningful content was produced.":
+                    return ai_result
+                else:
+                    self.logger.warning("AI generation failed or produced no content, falling back to rule-based")
+                    return self._generate_rule_based_description(schema_info)
+                    
+            except Exception as e:
+                self.logger.error(f"AI generation failed: {e}, falling back to rule-based")
+                return self._generate_rule_based_description(schema_info)
+        else:
+            # Use rule-based generation (fast and reliable)
+            return self._generate_rule_based_description(schema_info)
     
     def _build_ai_context(self, schema_info: Dict[str, Any]) -> str:
         """Build context string for AI generation focusing on functional aspects."""
@@ -530,20 +596,76 @@ class AIDescriptionGenerator:
     
     def _generate_ai_description(self, context: str, file_type: str) -> str:
         """Generate description using AI model with strict business focus."""
+        # Initialize AI models if not already done
+        if not self._ai_initialized:
+            self._initialize_ai_models()
+        
+        if not self.text_generator:
+            self.logger.warning("AI model not available, using rule-based generation")
+            return ""
+        
         try:
-            # Create a more focused prompt for the summarization model
-            input_text = f"""
-            Integration artifact type: {file_type}
+            start_time = time.time()
             
-            {context}
+            # Create a business-focused prompt that doesn't ask the model to summarize
+            if "text-generation" in str(type(self.text_generator)):
+                # For generative models like DialoGPT - use a very simple, direct prompt
+                prompt = f"This {file_type} file helps companies "
+                result = self.text_generator(prompt, max_length=150, min_length=80, do_sample=True, temperature=0.9, truncation=True)
+                generated_text = result[0]['generated_text']
+                # Extract only the generated part (remove the prompt)
+                description = generated_text[len(prompt):].strip()
+                
+                # Validate the generated content
+                if len(description) < 30 or any(artifact in description.lower() for artifact in [
+                    'integration artifact', 'business component', 'component type', 'data categories'
+                ]):
+                    # Try an even simpler approach
+                    prompt2 = f"Companies use this {file_type} file to "
+                    result2 = self.text_generator(prompt2, max_length=120, min_length=60, do_sample=True, temperature=0.8, truncation=True)
+                    generated_text2 = result2[0]['generated_text']
+                    description2 = generated_text2[len(prompt2):].strip()
+                    
+                    # Use the better result
+                    if len(description2) > len(description) and not any(artifact in description2.lower() for artifact in [
+                        'integration artifact', 'business component', 'component type', 'data categories'
+                    ]):
+                        description = description2
+                
+            elif "text2text-generation" in str(type(self.text_generator)):
+                # For BART models - use a very simple prompt
+                input_text = f"What does this {file_type} file do for business? {context}"
+                result = self.text_generator(input_text, max_length=120, min_length=60, do_sample=True, temperature=0.8)
+                description = result[0]['generated_text']
+                
+            else:
+                # Fallback for other pipeline types
+                input_text = f"Business description of {file_type} integration artifact: {context}"
+                result = self.text_generator(input_text, max_length=150, min_length=80, do_sample=True, temperature=0.7)
+                description = result[0]['generated_text'] if 'generated_text' in result[0] else result[0].get('summary_text', '')
             
-            Generate a business-focused description of this integration artifact that explains its functional purpose, 
-            the type of business data it handles, and how it supports system integration workflows.
-            """
+            ai_time = time.time() - start_time
+            self.logger.info(f"AI description generation completed in {ai_time:.3f}s")
             
-            # Use the text generator to create a summary
-            result = self.text_generator(input_text, max_length=150, min_length=80, do_sample=False)
-            return result[0]['summary_text']
+            # Clean up the generated text
+            description = description.strip()
+            if description.startswith("Business description of"):
+                description = description[len("Business description of"):].strip()
+            
+            # Validate that the AI actually generated meaningful content
+            # Check for common artifacts that indicate the AI is just repeating context
+            problematic_indicators = [
+                'integration artifact', 'business component', 'component type', 'data categories',
+                'required data elements', 'total data elements', 'xs:string', 'xs:date', 'xs:decimal'
+            ]
+            
+            has_problematic_content = any(indicator in description.lower() for indicator in problematic_indicators)
+            
+            if has_problematic_content or len(description) < 30:
+                self.logger.warning("AI generated problematic content, falling back to rule-based")
+                return ""  # Return empty to trigger fallback
+            
+            return description if description else "AI generation completed but no meaningful content was produced."
             
         except Exception as e:
             self.logger.error(f"AI generation error: {e}")
