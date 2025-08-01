@@ -838,49 +838,80 @@ def show_about_page():
 
 def show_converter_page(services):
     """
-    Display the converter page with all conversion options.
+    Display the converter page with dynamic source/target selection.
     """
     st.markdown('<div class="section-header"><h2>🔄 Converter</h2></div>', unsafe_allow_html=True)
     
     st.markdown("""
-    Convert between different schema and example formats. Choose from the available conversion options below.
+    Convert between different schema and example formats. Select your source and target types to see available conversions.
     """)
     
     # Get converter service
     converter_service = services['converter']
-    supported_conversions = converter_service.get_supported_conversions()
     
-    # Conversion type selection
-    conversion_type = st.selectbox(
-        "Select Conversion Type",
-        list(supported_conversions.keys()),
-        format_func=lambda x: supported_conversions[x]["name"],
-        help="Choose the type of conversion you want to perform"
-    )
+    # Dynamic source/target selection
+    st.markdown("### 🎯 Conversion Selection")
+    col1, col2 = st.columns(2)
     
-    # Show conversion details
-    if conversion_type:
-        conversion_info = supported_conversions[conversion_type]
-        help_info = converter_service.get_conversion_help(conversion_type)
+    with col1:
+        source_type = st.selectbox(
+            "Source Type",
+            converter_service.get_source_types(),
+            help="Select the type of your source file"
+        )
+    
+    with col2:
+        if source_type:
+            target_types = converter_service.get_target_types_for_source(source_type)
+            target_type = st.selectbox(
+                "Target Type",
+                target_types,
+                help="Select the type you want to convert to"
+            )
+        else:
+            target_type = None
+    
+    # Get conversion key and info
+    if source_type and target_type:
+        conversion_key = converter_service.get_conversion_key(source_type, target_type)
+        supported_conversions = converter_service.get_supported_conversions()
+        conversion_info = supported_conversions.get(conversion_key, {})
         
-        st.markdown(f"### 📋 {conversion_info['name']}")
-        st.markdown(f"**Description:** {conversion_info['description']}")
-        st.markdown(f"**Input:** {conversion_info['input_type']} → **Output:** {conversion_info['output_type']}")
-        
-        # Show help information
-        with st.expander("ℹ️ Conversion Help"):
-            st.markdown(f"**Input Format:** {help_info.get('input_format', 'N/A')}")
-            st.markdown(f"**Output Format:** {help_info.get('output_format', 'N/A')}")
-            st.markdown(f"**Features:** {help_info.get('features', 'N/A')}")
-            st.markdown(f"**Example:** `{help_info.get('example', 'N/A')}`")
-        
+        if conversion_info:
+            st.markdown(f"### 📋 {conversion_info.get('name', 'Conversion')}")
+            st.markdown(f"**Description:** {conversion_info.get('description', 'N/A')}")
+            st.markdown(f"**Input:** {conversion_info.get('input_type', 'N/A')} → **Output:** {conversion_info.get('output_type', 'N/A')}")
+            
+            # Show help information
+            help_info = converter_service.get_conversion_help(conversion_key)
+            with st.expander("ℹ️ Conversion Help"):
+                st.markdown(f"**Input Format:** {help_info.get('input_format', 'N/A')}")
+                st.markdown(f"**Output Format:** {help_info.get('output_format', 'N/A')}")
+                st.markdown(f"**Features:** {help_info.get('features', 'N/A')}")
+                st.markdown(f"**Example:** `{help_info.get('example', 'N/A')}`")
+        else:
+            st.warning(f"⚠️ Conversion from {source_type} to {target_type} is not yet implemented.")
+            return
+    
         # File upload
         st.markdown("### 📤 Input File")
+        
+        # Determine file types based on source type
+        file_types = []
+        if source_type == "json example" or source_type == "json schema":
+            file_types = ['json']
+        elif source_type == "xsd":
+            file_types = ['xsd', 'xml']
+        elif source_type == "xml example":
+            file_types = ['xml']
+        elif source_type == "excel":
+            file_types = ['xlsx', 'xls']
+        
         uploaded_file = st.file_uploader(
-            f"Upload {conversion_info['input_type']} file",
-            type=['json', 'xml', 'xsd'],
-            key=f"converter_uploader_{conversion_type}",
-            help=f"Upload your {conversion_info['input_type']} file"
+            f"Upload {source_type} file",
+            type=file_types,
+            key=f"converter_uploader_{conversion_key}",
+            help=f"Upload your {source_type} file"
         )
         
         if uploaded_file:
@@ -905,7 +936,7 @@ def show_converter_page(services):
         # Conversion options
         st.markdown("### ⚙️ Conversion Options")
         
-        if conversion_type == "json_to_schema":
+        if conversion_key == "json_to_schema":
             schema_name = st.text_input(
                 "Schema Name",
                 value="GeneratedSchema",
@@ -918,7 +949,7 @@ def show_converter_page(services):
                 help="Validate the generated schema using jsonschema library"
             )
             
-        elif conversion_type == "xml_to_xsd":
+        elif conversion_key == "xml_to_xsd":
             schema_name = st.text_input(
                 "Schema Name",
                 value="GeneratedSchema",
@@ -931,14 +962,14 @@ def show_converter_page(services):
                 help="Validate the generated XSD schema"
             )
             
-        elif conversion_type == "xsd_to_xml":
+        elif conversion_key == "xsd_to_xml":
             root_element_name = st.text_input(
                 "Root Element Name (Optional)",
                 value="",
                 help="Specify the root element name (if not specified, will be inferred from XSD)"
             )
             
-        elif conversion_type == "json_schema_to_json":
+        elif conversion_key == "json_schema_to_json":
             num_examples = st.number_input(
                 "Number of Examples",
                 min_value=1,
@@ -957,7 +988,7 @@ def show_converter_page(services):
         if st.button("🔄 Convert", type="primary", use_container_width=True):
             if uploaded_file:
                 try:
-                    with st.spinner(f"Converting {conversion_info['input_type']} to {conversion_info['output_type']}..."):
+                    with st.spinner(f"Converting {source_type} to {target_type}..."):
                         # Create temporary file
                         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_file.name.split('.')[-1]}") as temp_file:
                             temp_file.write(uploaded_file.read())
@@ -965,104 +996,117 @@ def show_converter_page(services):
                         
                         # Prepare conversion parameters
                         conversion_params = {}
-                        if conversion_type == "json_to_schema":
+                        if conversion_key == "json_to_schema":
                             conversion_params['schema_name'] = schema_name
-                        elif conversion_type == "xml_to_xsd":
+                        elif conversion_key == "xml_to_xsd":
                             conversion_params['schema_name'] = schema_name
-                        elif conversion_type == "xsd_to_xml":
+                        elif conversion_key == "xsd_to_xml":
                             if root_element_name:
                                 conversion_params['root_element_name'] = root_element_name
-                        elif conversion_type == "json_schema_to_json":
+                        elif conversion_key == "json_schema_to_json":
                             conversion_params['num_examples'] = num_examples
                         
-                        # Perform conversion
-                        result = converter_service.process_file_conversion(
-                            temp_file_path, 
-                            conversion_type, 
-                            **conversion_params
-                        )
+                        # Handle Excel conversions
+                        if conversion_key in ["json_to_excel", "json_schema_to_excel", "xsd_to_excel", "xml_to_excel"]:
+                            result = process_excel_conversion(temp_file_path, conversion_key, services)
+                        else:
+                            # Perform regular conversion
+                            result = converter_service.process_file_conversion(
+                                temp_file_path, 
+                                conversion_key, 
+                                **conversion_params
+                            )
                         
                         # Validate result if requested
-                        if conversion_type == "json_to_schema" and validate_schema:
-                            is_valid = converter_service.validate_conversion(conversion_type, None, result)
+                        if conversion_key == "json_to_schema" and validate_schema:
+                            is_valid = converter_service.validate_conversion(conversion_key, None, result)
                             if is_valid:
                                 st.markdown('<div class="success-message">✅ Generated schema is valid!</div>', unsafe_allow_html=True)
                             else:
                                 st.markdown('<div class="warning-message">⚠️ Generated schema validation failed</div>', unsafe_allow_html=True)
                         
-                        elif conversion_type == "xml_to_xsd" and validate_xsd:
-                            is_valid = converter_service.validate_conversion(conversion_type, None, result)
+                        elif conversion_key == "xml_to_xsd" and validate_xsd:
+                            is_valid = converter_service.validate_conversion(conversion_key, None, result)
                             if is_valid:
                                 st.markdown('<div class="success-message">✅ Generated XSD is valid!</div>', unsafe_allow_html=True)
                             else:
                                 st.markdown('<div class="warning-message">⚠️ Generated XSD validation failed</div>', unsafe_allow_html=True)
                         
-                        elif conversion_type == "json_schema_to_json" and validate_examples:
-                            is_valid = converter_service.validate_conversion(conversion_type, None, result)
+                        elif conversion_key == "json_schema_to_json" and validate_examples:
+                            is_valid = converter_service.validate_conversion(conversion_key, None, result)
                             if is_valid:
                                 st.markdown('<div class="success-message">✅ Generated examples are valid!</div>', unsafe_allow_html=True)
                             else:
                                 st.markdown('<div class="warning-message">⚠️ Generated examples validation failed</div>', unsafe_allow_html=True)
                         
                         # Show statistics
-                        stats = converter_service.get_conversion_statistics(conversion_type, result)
-                        if stats:
-                            st.markdown("#### 📊 Conversion Statistics")
-                            col1, col2, col3 = st.columns(3)
-                            
-                            if conversion_type == "json_to_schema":
-                                with col1:
-                                    st.metric("Total Properties", stats.get('total_properties', 0))
-                                    st.metric("Required Properties", stats.get('required_properties', 0))
-                                with col2:
-                                    st.metric("Object Properties", stats.get('object_properties', 0))
-                                    st.metric("Array Properties", stats.get('array_properties', 0))
-                                with col3:
-                                    st.metric("Primitive Properties", stats.get('primitive_properties', 0))
-                                    st.metric("Max Depth", stats.get('max_depth', 0))
-                            
-                            elif conversion_type == "xml_to_xsd":
-                                with col1:
-                                    st.metric("Total Elements", stats.get('total_elements', 0))
-                                    st.metric("Complex Types", stats.get('complex_types', 0))
-                                with col2:
-                                    st.metric("Simple Types", stats.get('simple_types', 0))
-                                    st.metric("Attributes", stats.get('attributes', 0))
-                                with col3:
-                                    st.metric("Max Depth", stats.get('max_depth', 0))
-                            
-                            elif conversion_type == "xsd_to_xml":
-                                with col1:
-                                    st.metric("Total Elements", stats.get('total_elements', 0))
-                                    st.metric("Attributes", stats.get('attributes', 0))
-                                with col2:
-                                    st.metric("Text Elements", stats.get('text_elements', 0))
-                                    st.metric("Max Depth", stats.get('max_depth', 0))
-                            
-                            elif conversion_type == "json_schema_to_json":
-                                with col1:
-                                    st.metric("Total Examples", stats.get('total_examples', 0))
-                                    st.metric("Avg Properties", stats.get('avg_object_properties', 0))
-                                with col2:
-                                    st.metric("Avg Array Length", stats.get('avg_array_length', 0))
-                                    st.metric("Max Depth", stats.get('max_depth', 0))
+                        if conversion_key not in ["json_to_excel", "json_schema_to_excel", "xsd_to_excel", "xml_to_excel"]:
+                            stats = converter_service.get_conversion_statistics(conversion_key, result)
+                            if stats:
+                                st.markdown("#### 📊 Conversion Statistics")
+                                col1, col2, col3 = st.columns(3)
+                                
+                                if conversion_key == "json_to_schema":
+                                    with col1:
+                                        st.metric("Total Properties", stats.get('total_properties', 0))
+                                        st.metric("Required Properties", stats.get('required_properties', 0))
+                                    with col2:
+                                        st.metric("Object Properties", stats.get('object_properties', 0))
+                                        st.metric("Array Properties", stats.get('array_properties', 0))
+                                    with col3:
+                                        st.metric("Primitive Properties", stats.get('primitive_properties', 0))
+                                        st.metric("Max Depth", stats.get('max_depth', 0))
+                                
+                                elif conversion_key == "xml_to_xsd":
+                                    with col1:
+                                        st.metric("Total Elements", stats.get('total_elements', 0))
+                                        st.metric("Complex Types", stats.get('complex_types', 0))
+                                    with col2:
+                                        st.metric("Simple Types", stats.get('simple_types', 0))
+                                        st.metric("Attributes", stats.get('attributes', 0))
+                                    with col3:
+                                        st.metric("Max Depth", stats.get('max_depth', 0))
+                                
+                                elif conversion_key == "xsd_to_xml":
+                                    with col1:
+                                        st.metric("Total Elements", stats.get('total_elements', 0))
+                                        st.metric("Attributes", stats.get('attributes', 0))
+                                    with col2:
+                                        st.metric("Text Elements", stats.get('text_elements', 0))
+                                        st.metric("Max Depth", stats.get('max_depth', 0))
+                                
+                                elif conversion_key == "json_schema_to_json":
+                                    with col1:
+                                        st.metric("Total Examples", stats.get('total_examples', 0))
+                                        st.metric("Avg Properties", stats.get('avg_object_properties', 0))
+                                    with col2:
+                                        st.metric("Avg Array Length", stats.get('avg_array_length', 0))
+                                        st.metric("Max Depth", stats.get('max_depth', 0))
                         
                         # Display result
                         st.markdown("#### 📄 Conversion Result")
                         
-                        if conversion_type in ["json_to_schema", "json_schema_to_json"]:
+                        if conversion_key in ["json_to_schema", "json_schema_to_json"]:
                             st.json(result)
+                        elif conversion_key in ["json_to_excel", "json_schema_to_excel", "xsd_to_excel", "xml_to_excel"]:
+                            # For Excel conversions, show success message and download button
+                            st.markdown('<div class="success-message">✅ Excel file generated successfully!</div>', unsafe_allow_html=True)
                         else:
                             st.code(result, language="xml")
                         
                         # Download button
-                        if conversion_type in ["json_to_schema", "json_schema_to_json"]:
+                        if conversion_key in ["json_to_schema", "json_schema_to_json"]:
                             result_json = json.dumps(result, indent=2, ensure_ascii=False)
                             file_extension = "json"
                             mime_type = "application/json"
+                        elif conversion_key in ["json_to_excel", "json_schema_to_excel", "xsd_to_excel", "xml_to_excel"]:
+                            # Excel file download
+                            result_json = result
+                            file_extension = "xlsx"
+                            mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                         else:
                             result_json = result
-                            file_extension = "xsd" if conversion_type == "xml_to_xsd" else "xml"
+                            file_extension = "xsd" if conversion_key == "xml_to_xsd" else "xml"
                             mime_type = "application/xml"
                         
                         st.download_button(
@@ -1081,6 +1125,80 @@ def show_converter_page(services):
                     st.error(f"Technical details: {str(e)}")
             else:
                 st.markdown('<div class="warning-message">⚠️ Please upload a file to convert</div>', unsafe_allow_html=True)
+
+
+def process_excel_conversion(file_path: str, conversion_key: str, services: dict) -> bytes:
+    """
+    Process Excel conversions using the existing ExcelExporter service.
+    """
+    try:
+        excel_exporter = services['excel_exporter']
+        
+        if conversion_key == "json_to_excel":
+            # Convert JSON example to Excel
+            with open(file_path, 'r', encoding='utf-8') as f:
+                json_data = json.load(f)
+            # Use ExcelExporter for JSON to Excel conversion
+            # First convert JSON to schema, then to Excel
+            json_to_schema = services['converter'].json_to_schema
+            schema_data = json_to_schema.convert_json_example_to_schema(json_data, "GeneratedSchema")
+            # Parse the schema and convert to Excel
+            json_schema_parser = services['json_schema_parser']
+            parsed_data = json_schema_parser.parse_json_schema_data(schema_data)
+            output_buffer = BytesIO()
+            excel_exporter.export({'schema': parsed_data}, output_buffer)
+            output_buffer.seek(0)
+            return output_buffer.getvalue()
+        
+        elif conversion_key == "json_schema_to_excel":
+            # Convert JSON Schema to Excel
+            with open(file_path, 'r', encoding='utf-8') as f:
+                schema_data = json.load(f)
+            # Parse JSON Schema and convert to Excel
+            json_schema_parser = services['json_schema_parser']
+            parsed_data = json_schema_parser.parse_json_schema_data(schema_data)
+            output_buffer = BytesIO()
+            excel_exporter.export({'schema': parsed_data}, output_buffer)
+            output_buffer.seek(0)
+            return output_buffer.getvalue()
+        
+        elif conversion_key == "xsd_to_excel":
+            # Convert XSD to Excel
+            xsd_parser = services['xsd_parser']
+            parsed_data = xsd_parser.parse_xsd_file(file_path)
+            output_buffer = BytesIO()
+            excel_exporter.export({'schema': parsed_data}, output_buffer)
+            output_buffer.seek(0)
+            return output_buffer.getvalue()
+        
+        elif conversion_key == "xml_to_excel":
+            # Convert XML to Excel (first convert to XSD, then to Excel)
+            # This is a simplified approach - in practice, you might want to parse XML directly
+            xml_to_xsd = services['converter'].xml_to_xsd
+            xsd_content = xml_to_xsd.convert_xml_example_to_xsd(
+                open(file_path, 'r', encoding='utf-8').read(), 
+                "GeneratedSchema"
+            )
+            # Save XSD to temp file and convert to Excel
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.xsd') as temp_xsd:
+                temp_xsd.write(xsd_content.encode('utf-8'))
+                temp_xsd_path = temp_xsd.name
+            
+            try:
+                xsd_parser = services['xsd_parser']
+                parsed_data = xsd_parser.parse_xsd_file(temp_xsd_path)
+                output_buffer = BytesIO()
+                excel_exporter.export({'schema': parsed_data}, output_buffer)
+                output_buffer.seek(0)
+                return output_buffer.getvalue()
+            finally:
+                os.unlink(temp_xsd_path)
+        
+        else:
+            raise ValueError(f"Unsupported Excel conversion: {conversion_key}")
+    
+    except Exception as e:
+        raise Exception(f"Error in Excel conversion {conversion_key}: {str(e)}")
 
 
 
