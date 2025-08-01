@@ -1222,6 +1222,10 @@ def process_mapping(source_file, target_file, services, source_case="Original", 
         wb = openpyxl.Workbook()
         first = True
         
+        # Initialize variables for overall statistics
+        total_source_fields = 0
+        matched_fields = 0
+        
         for msg_name, src_full_rows in src_messages.items():
             if not first:
                 ws = wb.create_sheet(title=msg_name[:31])  # Excel sheet name limit
@@ -1321,46 +1325,13 @@ def process_mapping(source_file, target_file, services, source_case="Original", 
                 
                 ws.append(src_vals + [dest_field] + tgt_vals)
             
-            # Add summary statistics
-            total_source_fields = len(src_full_rows)
-            matched_fields = sum(1 for src_row in src_full_rows 
+            # Update overall statistics
+            total_source_fields += len(src_full_rows)
+            matched_fields += sum(1 for src_row in src_full_rows 
                               if source_to_target_mapping.get(row_path(src_row)) is not None)
-            unmatched_fields = total_source_fields - matched_fields
-            
-            # Check if we have enough matches to generate a meaningful mapping
-            match_percentage = (matched_fields / total_source_fields * 100) if total_source_fields > 0 else 0
-            
-            if match_percentage < min_match_threshold:
-                # Clean up temp files before returning
-                os.unlink(source_temp_path)
-                os.unlink(target_temp_path)
-                
-                # Provide detailed analysis
-                st.warning(f"⚠️ **Schemas don't match well enough to generate a mapping**")
-                st.markdown(f"""
-                **Analysis Results:**
-                - **Source fields:** {total_source_fields}
-                - **Matched fields:** {matched_fields}
-                - **Unmatched fields:** {unmatched_fields}
-                - **Match percentage:** {match_percentage:.1f}%
-                - **Minimum threshold:** {min_match_threshold}%
-                
-                **Possible reasons for low match:**
-                - Different schema structures or naming conventions
-                - Incompatible data models
-                - Different business domains or use cases
-                - Missing or extra fields in one of the schemas
-                
-                **Suggestions:**
-                - Check if the schemas are from the same domain/business context
-                - Verify that both schemas represent similar data structures
-                - Consider using different source/target schemas that are more compatible
-                - Review the field names and structure for potential manual mapping
-                """)
-                return None
             
             # Add summary row at the end
-            summary_row = [''] * len(src_vals) + [f'SUMMARY: {matched_fields}/{total_source_fields} fields matched ({match_percentage:.1f}%)'] + [''] * len(tgt_vals)
+            summary_row = [''] * len(src_vals) + [f'SUMMARY: {matched_fields}/{total_source_fields} fields matched'] + [''] * len(tgt_vals)
             ws.append(summary_row)
             
             # Prune unused source level columns
@@ -1386,6 +1357,40 @@ def process_mapping(source_file, target_file, services, source_case="Original", 
                 col_letter = get_column_letter(col)
                 if col > tgt_level_start and all((ws.cell(row=row, column=col).value in (None, '')) for row in range(3, ws.max_row + 1)):
                     ws.delete_cols(col)
+        
+        # Calculate overall match percentage
+        match_percentage = (matched_fields / total_source_fields * 100) if total_source_fields > 0 else 0
+        unmatched_fields = total_source_fields - matched_fields
+        
+        # Check if we have enough matches to generate a meaningful mapping
+        if match_percentage < min_match_threshold:
+            # Clean up temp files before returning
+            os.unlink(source_temp_path)
+            os.unlink(target_temp_path)
+            
+            # Provide detailed analysis
+            st.warning(f"⚠️ **Schemas don't match well enough to generate a mapping**")
+            st.markdown(f"""
+            **Analysis Results:**
+            - **Source fields:** {total_source_fields}
+            - **Matched fields:** {matched_fields}
+            - **Unmatched fields:** {unmatched_fields}
+            - **Match percentage:** {match_percentage:.1f}%
+            - **Minimum threshold:** {min_match_threshold}%
+            
+            **Possible reasons for low match:**
+            - Different schema structures or naming conventions
+            - Incompatible data models
+            - Different business domains or use cases
+            - Missing or extra fields in one of the schemas
+            
+            **Suggestions:**
+            - Check if the schemas are from the same domain/business context
+            - Verify that both schemas represent similar data structures
+            - Consider using different source/target schemas that are more compatible
+            - Review the field names and structure for potential manual mapping
+            """)
+            return None
         
         # Save to buffer
         output_buffer = BytesIO()
