@@ -22,7 +22,7 @@ from services.wsdl_to_xsd_extractor import merge_xsd_from_wsdl
 from services.excel_mapping_service import ExcelMappingService
 from services.json_to_excel_service import JSONToExcelService
 from services.case_converter_service import pascal_to_camel, camel_to_pascal
-from services.ai_description_generator import AIDescriptionGenerator
+
 from services.json_example_to_schema_service import JSONExampleToSchemaService
 
 # Import homepage
@@ -398,28 +398,7 @@ st.markdown("""
         border-color: var(--forge-orange);
     }
     
-    /* Info Box for AI Descriptions */
-    .info-box {
-        background: linear-gradient(135deg, var(--forge-charcoal) 0%, var(--forge-steel) 100%);
-        color: var(--forge-text);
-        padding: 1.5rem;
-        border-radius: var(--radius-lg);
-        border: 2px solid var(--forge-orange);
-        box-shadow: var(--forge-shadow);
-        margin: 1rem 0;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .info-box::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 3px;
-        background: linear-gradient(90deg, var(--forge-orange) 0%, var(--forge-fire) 100%);
-    }
+
     
     /* Responsive Design */
     @media (max-width: 768px) {
@@ -451,7 +430,7 @@ def get_services():
         'excel_exporter': ExcelExporter(),
         'mapping_service': ExcelMappingService(),
         'json_to_excel': JSONToExcelService(),
-        'ai_description_generator': AIDescriptionGenerator(enable_ai=True),  # AI enabled by default
+
         'json_example_to_schema': JSONExampleToSchemaService()
     }
 
@@ -491,8 +470,7 @@ def main():
     if st.sidebar.button("📋 Schema to Excel", key="nav_excel", use_container_width=True):
         st.session_state.current_page = "Schema to Excel"
     
-    if st.sidebar.button("🤖 AI Description Generator", key="nav_ai_desc", use_container_width=True):
-        st.session_state.current_page = "AI Description Generator"
+
     
     if st.sidebar.button("📝 JSON Example to Schema", key="nav_json_schema", use_container_width=True):
         st.session_state.current_page = "JSON Example to Schema"
@@ -517,8 +495,7 @@ def main():
         show_wsdl_to_xsd_page(services)
     elif st.session_state.current_page == "Schema to Excel":
         show_schema_to_excel_page(services)
-    elif st.session_state.current_page == "AI Description Generator":
-        show_ai_description_page(services)
+
     elif st.session_state.current_page == "JSON Example to Schema":
         show_json_example_to_schema_page(services)
     elif st.session_state.current_page == "About":
@@ -839,154 +816,6 @@ def show_about_page():
     Built with Streamlit
     Based on The Forge v8 Desktop Application
     """)
-
-def show_ai_description_page(services):
-    """
-    Display the AI Description Generator page for generating functional descriptions of integration artifacts.
-    """
-    st.markdown('<div class="section-header"><h2>🤖 AI Description Generator</h2></div>', unsafe_allow_html=True)
-    
-    # Show current status
-    ai_generator = services['ai_description_generator']
-    if ai_generator.enable_ai:
-        st.info("🤖 Hybrid Mode: Uses intelligent rule-based generation with optional AI enhancement for better quality")
-    else:
-        st.info("⚡ Fast Mode: Rule-based generation only (instant results)")
-    
-    st.markdown("""
-    Generate functional descriptions for integration artifacts. Upload WSDL, XSD, JSON, XML, or JSON Schema files 
-    to automatically generate short and detailed descriptions focused on business context and data flow.
-    
-    **How it works:**
-    - **Primary**: Intelligent rule-based generation that analyzes your data structure and creates context-aware descriptions
-    - **Enhancement**: Optional AI enhancement when enabled (only used when it improves quality)
-    - **Fast & Reliable**: Always provides high-quality, business-friendly descriptions
-    """)
-    
-    # File upload section
-    st.markdown("### 📤 Upload Integration Artifact")
-    
-    uploaded_file = st.file_uploader(
-        "Upload your schema file",
-        type=['wsdl', 'xsd', 'xml', 'json'],
-        key="ai_desc_uploader",
-        help="Upload WSDL, XSD, JSON, XML, or JSON Schema files"
-    )
-    
-    if uploaded_file:
-        st.markdown(f'<div class="success-message">✅ Uploaded: {uploaded_file.name}</div>', unsafe_allow_html=True)
-        
-        # Determine file type
-        file_extension = uploaded_file.name.lower().split('.')[-1]
-        file_type_mapping = {
-            'wsdl': 'wsdl',
-            'xsd': 'xsd',
-            'xml': 'xml',
-            'json': 'json_schema'  # Assume JSON Schema by default
-        }
-        file_type = file_type_mapping.get(file_extension, 'json_schema')
-        
-        # For JSON files, try to detect if it's a schema or example
-        if file_extension == 'json':
-            try:
-                json_content = json.loads(content.decode('utf-8'))
-                # Check if it has schema-like properties
-                if '$schema' in json_content or 'properties' in json_content:
-                    file_type = 'json_schema'
-                else:
-                    file_type = 'json_example'
-            except:
-                file_type = 'json_schema'  # Default fallback
-        
-        # Show file preview
-        content = uploaded_file.read()
-        uploaded_file.seek(0)  # Reset file pointer
-        with st.expander("📄 File Preview"):
-            try:
-                decoded_content = content.decode('utf-8')
-                preview = decoded_content[:1000] + "..." if len(decoded_content) > 1000 else decoded_content
-                if file_extension == 'json':
-                    st.code(preview, language="json")
-                else:
-                    st.code(preview, language="xml")
-            except UnicodeDecodeError:
-                st.code(content[:500], language="text")
-        
-        # Generate descriptions
-        if st.button("🤖 Generate Descriptions", type="primary", use_container_width=True):
-            with st.spinner("🤖 AI is analyzing your file and generating descriptions..."):
-                try:
-                    # Create temporary file
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_extension}") as temp_file:
-                        temp_file.write(content)
-                        temp_file_path = temp_file.name
-                    
-                    # Generate descriptions
-                    ai_generator = services['ai_description_generator']
-                    result = ai_generator.generate_descriptions(temp_file_path, file_type)
-                    
-                    # Clean up temporary file
-                    os.unlink(temp_file_path)
-                    
-                    # Display results
-                    st.markdown("### 📝 Generated Descriptions")
-                    
-                    # Short Description
-                    st.markdown("#### 🔹 Integration Artifact Short Description")
-                    st.markdown(f'<div class="info-box">{result["short_description"]}</div>', unsafe_allow_html=True)
-                    
-                    # Detailed Description
-                    st.markdown("#### 📋 Integration Artifact Description")
-                    st.markdown(f'<div class="info-box">{result["detailed_description"]}</div>', unsafe_allow_html=True)
-                    
-                    # Schema Information
-                    if result.get('schema_info'):
-                        schema_info = result['schema_info']
-                        st.markdown("#### 🔍 Schema Analysis")
-                        
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("File Type", schema_info.get('file_type', 'Unknown'))
-                        with col2:
-                            st.metric("Total Structures", schema_info.get('total_structures', 0))
-                        with col3:
-                            if schema_info.get('structures'):
-                                main_structure = schema_info['structures'][0]
-                                st.metric("Main Structure", main_structure.get('name', 'Unknown'))
-                        
-                        # Show structure details
-                        if schema_info.get('structures'):
-                            with st.expander("🔍 Detailed Structure Analysis"):
-                                for i, structure in enumerate(schema_info['structures'][:3]):  # Show first 3 structures
-                                    st.markdown(f"**Structure {i+1}: {structure.get('name', 'Unknown')}**")
-                                    st.markdown(f"Type: {structure.get('type', 'Unknown')}")
-                                    
-                                    if structure.get('fields'):
-                                        st.markdown("**Key Fields:**")
-                                        field_data = []
-                                        for field in structure['fields'][:10]:  # Show first 10 fields
-                                            field_data.append({
-                                                'Field Name': field.get('name', 'Unknown'),
-                                                'Type': field.get('type', 'Unknown'),
-                                                'Required': 'Yes' if field.get('required') else 'No'
-                                            })
-                                        
-                                        if field_data:
-                                            st.dataframe(field_data, use_container_width=True)
-                                        
-                                        if len(structure['fields']) > 10:
-                                            st.markdown(f"*... and {len(structure['fields']) - 10} more fields*")
-                                    
-                                    st.markdown("---")
-                    
-                    # Success message
-                    st.markdown('<div class="success-message">✅ Descriptions generated successfully!</div>', unsafe_allow_html=True)
-                    
-                except Exception as e:
-                    st.markdown(f'<div class="error-message">❌ Error generating descriptions: {str(e)}</div>', unsafe_allow_html=True)
-                    st.error(f"Technical details: {str(e)}")
-    else:
-        st.markdown('<div class="warning-message">⚠️ Please upload a schema file to generate descriptions</div>', unsafe_allow_html=True)
 
 
 def show_json_example_to_schema_page(services):
