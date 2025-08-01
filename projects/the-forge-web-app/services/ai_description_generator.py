@@ -141,12 +141,16 @@ class AIDescriptionGenerator:
                 sequence = ct.find('.//xs:sequence', namespaces)
                 if sequence is not None:
                     for elem in sequence.findall('.//xs:element', namespaces):
+                        # Handle unbounded maxOccurs
+                        max_occurs = elem.get('maxOccurs', '1')
+                        max_occurrences = 999 if max_occurs == 'unbounded' else int(max_occurs)
+                        
                         field = SchemaField(
                             name=elem.get('name', 'Unknown'),
                             type=elem.get('type', 'string'),
                             required=elem.get('minOccurs', '1') == '1',
                             min_occurrences=int(elem.get('minOccurs', '1')),
-                            max_occurrences=int(elem.get('maxOccurs', '1'))
+                            max_occurrences=max_occurrences
                         )
                         fields.append(field)
                 
@@ -438,34 +442,47 @@ class AIDescriptionGenerator:
         }
     
     def _generate_short_description(self, schema_info: Dict[str, Any]) -> str:
-        """Generate a short functional description."""
+        """Generate a short functional description (1-2 sentences)."""
         file_type = schema_info.get('file_type', 'Unknown')
         structures = schema_info.get('structures', [])
         
         if not structures:
-            return f"Empty {file_type} file with no defined structures."
+            return f"This {file_type} file does not contain any defined structures or is empty."
         
-        # Extract key information
+        # Extract key information for functional context
         main_structure = structures[0]
-        structure_name = main_structure.get('name', 'Unknown')
+        structure_type = main_structure.get('type', 'Unknown')
         field_count = len(main_structure.get('fields', []))
         
-        # Generate description based on file type
+        # Generate functional descriptions based on file type and structure
         if file_type == 'WSDL':
-            return f"Web Service Definition containing {len(structures)} service components with {field_count} total operations and data structures."
+            if structure_type == 'service':
+                return f"This web service provides business operations for system integration and data exchange between applications."
+            elif structure_type == 'operation':
+                return f"This web service operation enables data processing and communication between different business systems."
+            else:
+                return f"This web service definition enables system integration and data exchange between business applications."
+                
         elif file_type == 'XSD':
-            return f"XML Schema Definition defining {len(structures)} data structures with {field_count} total fields for data validation and transformation."
+            if field_count > 10:
+                return f"This data schema defines comprehensive business information structures for system integration and data validation."
+            else:
+                return f"This data schema defines business information structures for data exchange and validation between systems."
+                
         elif file_type == 'JSON Schema':
-            return f"JSON Schema specification for '{structure_name}' with {field_count} properties defining data structure and validation rules."
+            return f"This data contract defines business information structure and validation rules for data exchange between applications."
+            
         elif file_type == 'JSON':
-            return f"JSON data structure '{structure_name}' containing {field_count} fields for data exchange and processing."
+            return f"This data structure contains business information for system integration and data processing workflows."
+            
         elif file_type == 'XML':
-            return f"XML document structure '{structure_name}' with {field_count} elements for data representation and communication."
+            return f"This data structure contains business information for system integration and data exchange between applications."
+            
         else:
-            return f"{file_type} file containing {len(structures)} structures with {field_count} total fields."
+            return f"This {file_type} file contains business data structures for system integration and information exchange."
     
     def _generate_detailed_description(self, schema_info: Dict[str, Any]) -> str:
-        """Generate a detailed functional description using AI if available."""
+        """Generate a detailed functional description (5-10 sentences) using AI if available."""
         file_type = schema_info.get('file_type', 'Unknown')
         structures = schema_info.get('structures', [])
         
@@ -488,53 +505,67 @@ class AIDescriptionGenerator:
         return self._generate_rule_based_description(schema_info)
     
     def _build_ai_context(self, schema_info: Dict[str, Any]) -> str:
-        """Build context string for AI generation."""
+        """Build context string for AI generation focusing on functional aspects."""
         file_type = schema_info.get('file_type', 'Unknown')
         structures = schema_info.get('structures', [])
         
-        context_parts = [f"File type: {file_type}"]
+        context_parts = [f"Integration artifact type: {file_type}"]
         
         for i, structure in enumerate(structures[:3]):  # Limit to first 3 structures
-            context_parts.append(f"\nStructure {i+1}: {structure.get('name', 'Unknown')}")
-            context_parts.append(f"Type: {structure.get('type', 'Unknown')}")
+            context_parts.append(f"\nBusiness component {i+1}: {structure.get('name', 'Unknown')}")
+            context_parts.append(f"Component type: {structure.get('type', 'Unknown')}")
             
             if structure.get('description'):
-                context_parts.append(f"Description: {structure.get('description')}")
+                context_parts.append(f"Purpose: {structure.get('description')}")
             
             fields = structure.get('fields', [])
             if fields:
-                field_info = []
-                for field in fields[:10]:  # Limit to first 10 fields
-                    field_desc = f"{field.get('name', 'Unknown')} ({field.get('type', 'Unknown')})"
-                    if field.get('required'):
-                        field_desc += " [Required]"
-                    field_info.append(field_desc)
+                # Categorize fields by type for functional context
+                field_types = {}
+                for field in fields:
+                    field_type = field.get('type', 'Unknown')
+                    if field_type not in field_types:
+                        field_types[field_type] = 0
+                    field_types[field_type] += 1
                 
-                context_parts.append(f"Fields: {', '.join(field_info)}")
+                context_parts.append(f"Data categories: {', '.join([f'{count} {type_name}' for type_name, count in field_types.items()])}")
+                
+                # Identify if this is request/response/flow
+                required_fields = [f for f in fields if f.get('required', False)]
+                if required_fields:
+                    context_parts.append(f"Required data elements: {len(required_fields)}")
+                
                 if len(fields) > 10:
-                    context_parts.append(f"... and {len(fields) - 10} more fields")
+                    context_parts.append(f"Total data elements: {len(fields)}")
         
         return "\n".join(context_parts)
     
     def _generate_ai_description(self, context: str, file_type: str) -> str:
-        """Generate description using AI model."""
+        """Generate description using AI model with strict business focus."""
         try:
             prompt = f"""
-            Generate a functional description for this {file_type} integration artifact.
-            Focus on business context and data flow, not technical details.
+            You are an expert AI assistant specialized in system integration documentation. 
+            Analyze this {file_type} integration artifact and generate a detailed functional description.
             
             Context:
             {context}
             
-            Generate a detailed description that explains:
-            1. What this artifact is used for
-            2. What kind of data it handles
-            3. How it fits into integration workflows
-            4. Key business entities and relationships
+            Generate a complete, detailed, and professional description (5-10 sentences) that:
+            1. Describes the functional purpose of the integration
+            2. Identifies which systems or domains are typically involved
+            3. Describes the type of information exchanged (e.g., customer data, billing records, inventory updates)
+            4. Highlights whether the operation is related to querying, creating, updating, or deleting data
+            5. Mentions whether the artifact represents a request, a response, or a complete message flow
+            6. Is generic enough to apply to various platforms (ETL, API Gateway, ESB)
+            7. Uses business-friendly language, avoiding technical jargon
+            8. Does not reference specific field names or technical identifiers
+            9. Does not hallucinate information not clearly present in the input
+            
+            Focus strictly on functional understanding and business context.
             """
             
             # Use the text generator to create a summary
-            result = self.text_generator(prompt, max_length=150, min_length=50, do_sample=False)
+            result = self.text_generator(prompt, max_length=200, min_length=100, do_sample=False)
             return result[0]['summary_text']
             
         except Exception as e:
@@ -542,52 +573,70 @@ class AIDescriptionGenerator:
             return ""
     
     def _generate_rule_based_description(self, schema_info: Dict[str, Any]) -> str:
-        """Generate description using rule-based approach."""
+        """Generate description using rule-based approach with strict business focus."""
         file_type = schema_info.get('file_type', 'Unknown')
         structures = schema_info.get('structures', [])
         
         description_parts = []
         
-        # File type specific descriptions
+        # File type specific functional descriptions
         if file_type == 'WSDL':
-            description_parts.append("This Web Service Definition Language (WSDL) file defines a web service interface for system integration.")
-            description_parts.append("It specifies service operations, message formats, and communication protocols for distributed computing.")
+            description_parts.append("This web service definition enables business system integration by providing standardized communication protocols and data exchange mechanisms.")
+            description_parts.append("It facilitates interoperability between different business applications and systems, allowing them to exchange information and execute business processes.")
+            description_parts.append("The service typically handles business operations such as data retrieval, processing, and synchronization across multiple enterprise systems.")
+            description_parts.append("This integration artifact supports both request-response patterns and asynchronous messaging for complex business workflows.")
+            description_parts.append("It enables organizations to connect legacy systems, modern applications, and external business partners through standardized interfaces.")
             
         elif file_type == 'XSD':
-            description_parts.append("This XML Schema Definition (XSD) file provides data validation and structure definition for XML documents.")
-            description_parts.append("It ensures data integrity and consistency across different systems and applications.")
+            description_parts.append("This data schema definition ensures consistent data structure and validation across business systems and applications.")
+            description_parts.append("It provides a standardized format for business information exchange, ensuring data integrity and compatibility between different platforms.")
+            description_parts.append("The schema supports business data validation, transformation, and mapping processes in enterprise integration scenarios.")
+            description_parts.append("This artifact enables organizations to maintain data quality and consistency across multiple business systems and data sources.")
+            description_parts.append("It facilitates data governance and compliance requirements by establishing clear data structure definitions.")
             
         elif file_type == 'JSON Schema':
-            description_parts.append("This JSON Schema file defines the structure and validation rules for JSON data exchange.")
-            description_parts.append("It provides a contract for data format requirements and ensures compatibility between systems.")
+            description_parts.append("This data contract defines business information structure and validation rules for modern application integration.")
+            description_parts.append("It provides a standardized format for business data exchange, ensuring compatibility and data quality across different systems.")
+            description_parts.append("The schema supports business process automation and data synchronization between web applications and services.")
+            description_parts.append("This artifact enables organizations to establish clear data requirements and validation rules for business information exchange.")
+            description_parts.append("It facilitates integration with modern web-based business applications and cloud services.")
             
         elif file_type == 'JSON':
-            description_parts.append("This JSON file contains structured data for system integration and data exchange.")
-            description_parts.append("It provides a lightweight format for transmitting data between different applications and services.")
+            description_parts.append("This data structure contains business information formatted for efficient system integration and data exchange.")
+            description_parts.append("It provides a lightweight format for transmitting business data between different applications and services.")
+            description_parts.append("The structure supports real-time data exchange and processing in business integration scenarios.")
+            description_parts.append("This artifact enables organizations to exchange business information quickly and efficiently across multiple systems.")
+            description_parts.append("It facilitates integration with modern web applications and mobile business solutions.")
             
         elif file_type == 'XML':
-            description_parts.append("This XML file contains structured data for system integration and data exchange.")
-            description_parts.append("It provides a standardized format for transmitting data between different applications and services.")
+            description_parts.append("This data structure contains business information in a standardized format for system integration and data exchange.")
+            description_parts.append("It provides a structured format for transmitting business data between different applications and enterprise systems.")
+            description_parts.append("The structure supports complex business data relationships and hierarchical information organization.")
+            description_parts.append("This artifact enables organizations to exchange structured business information across multiple platforms and systems.")
+            description_parts.append("It facilitates integration with enterprise systems and supports business process automation workflows.")
         
-        # Add structure information
+        # Add structure information without technical details
         if structures:
             main_structure = structures[0]
-            structure_name = main_structure.get('name', 'Unknown')
             field_count = len(main_structure.get('fields', []))
             
-            description_parts.append(f"\nThe primary structure '{structure_name}' contains {field_count} data fields.")
-            
-            # Add field examples
-            fields = main_structure.get('fields', [])
-            if fields:
-                field_examples = [f.get('name', 'Unknown') for f in fields[:5]]
-                description_parts.append(f"Key fields include: {', '.join(field_examples)}")
+            if field_count > 0:
+                description_parts.append(f"The integration artifact contains comprehensive business data elements to support various business operations and information exchange requirements.")
                 
-                if len(fields) > 5:
-                    description_parts.append(f"Additional fields provide comprehensive data coverage for the integration scenario.")
+                # Determine operation type based on structure analysis
+                required_fields = [f for f in main_structure.get('fields', []) if f.get('required', False)]
+                if required_fields:
+                    description_parts.append("The artifact includes essential business data elements that are required for successful integration and data processing.")
+                
+                if field_count > 20:
+                    description_parts.append("This comprehensive data structure supports complex business scenarios with extensive information requirements.")
+                elif field_count > 10:
+                    description_parts.append("The data structure accommodates moderate complexity business operations with multiple data requirements.")
+                else:
+                    description_parts.append("The data structure supports focused business operations with streamlined information requirements.")
         
         # Add integration context
-        description_parts.append("\nThis artifact facilitates data exchange and system interoperability in enterprise integration scenarios.")
-        description_parts.append("It supports business process automation and data synchronization across multiple systems and platforms.")
+        description_parts.append("This integration artifact facilitates seamless data exchange and system interoperability in enterprise business environments.")
+        description_parts.append("It supports business process automation, data synchronization, and information sharing across multiple business systems and platforms.")
         
         return " ".join(description_parts) 

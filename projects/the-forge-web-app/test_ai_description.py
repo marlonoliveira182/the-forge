@@ -14,31 +14,25 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from services.ai_description_generator import AIDescriptionGenerator
 
 def test_ai_description_generator():
-    """Test the AI Description Generator with sample data."""
-    
+    """Test the AI Description Generator with a sample JSON Schema."""
+    print("🔨 The Forge - AI Description Generator Test")
+    print("=" * 50)
     print("🤖 Testing AI Description Generator...")
+    print("📝 Generating descriptions...")
     
-    # Initialize the generator
-    generator = AIDescriptionGenerator()
-    
-    # Test with a sample JSON Schema
-    sample_json_schema = {
+    # Create a temporary JSON Schema file
+    json_schema_content = '''
+    {
         "title": "Customer Order",
-        "description": "Schema for customer order data",
         "type": "object",
         "properties": {
-            "orderId": {
-                "type": "string",
-                "description": "Unique order identifier"
-            },
             "customerId": {
                 "type": "string",
                 "description": "Customer identifier"
             },
-            "orderDate": {
+            "orderId": {
                 "type": "string",
-                "format": "date-time",
-                "description": "Order creation date"
+                "description": "Order identifier"
             },
             "items": {
                 "type": "array",
@@ -46,135 +40,153 @@ def test_ai_description_generator():
                     "type": "object",
                     "properties": {
                         "productId": {"type": "string"},
-                        "quantity": {"type": "integer"},
-                        "price": {"type": "number"}
+                        "quantity": {"type": "integer"}
                     }
                 }
             },
             "totalAmount": {
                 "type": "number",
                 "description": "Total order amount"
+            },
+            "status": {
+                "type": "string",
+                "enum": ["pending", "confirmed", "shipped"]
             }
         },
-        "required": ["orderId", "customerId", "orderDate", "items", "totalAmount"]
+        "required": ["customerId", "orderId", "items"]
     }
+    '''
     
-    # Create temporary file
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
-        json.dump(sample_json_schema, temp_file)
-        temp_file_path = temp_file.name
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        f.write(json_schema_content)
+        temp_file = f.name
     
     try:
+        # Initialize the generator
+        generator = AIDescriptionGenerator()
+        
         # Generate descriptions
-        print("📝 Generating descriptions...")
-        result = generator.generate_descriptions(temp_file_path, 'json_schema')
+        result = generator.generate_descriptions(temp_file, 'json_schema')
         
-        # Display results
-        print("\n" + "="*50)
+        print("\n" + "=" * 50)
         print("📋 GENERATED DESCRIPTIONS")
-        print("="*50)
+        print("=" * 50)
+        print()
         
-        print("\n🔹 Short Description:")
+        print("🔹 Short Description:")
         print(result['short_description'])
+        print()
         
-        print("\n📋 Detailed Description:")
+        print("📋 Detailed Description:")
         print(result['detailed_description'])
+        print()
         
-        print("\n🔍 Schema Information:")
+        # Display schema information
         schema_info = result.get('schema_info', {})
+        print("🔍 Schema Information:")
         print(f"File Type: {schema_info.get('file_type', 'Unknown')}")
         print(f"Total Structures: {schema_info.get('total_structures', 0)}")
         
-        if schema_info.get('structures'):
-            main_structure = schema_info['structures'][0]
+        structures = schema_info.get('structures', [])
+        if structures:
+            main_structure = structures[0]
             print(f"Main Structure: {main_structure.get('name', 'Unknown')}")
             print(f"Field Count: {len(main_structure.get('fields', []))}")
         
-        print("\n✅ Test completed successfully!")
+        print()
+        print("✅ Test completed successfully!")
         
     except Exception as e:
-        print(f"❌ Error during test: {e}")
-        import traceback
-        traceback.print_exc()
-    
+        print(f"❌ Error: {e}")
     finally:
         # Clean up
-        if os.path.exists(temp_file_path):
-            os.unlink(temp_file_path)
+        if os.path.exists(temp_file):
+            os.unlink(temp_file)
 
 def test_xml_schema():
-    """Test with a sample XML Schema."""
-    
+    """Test XML Schema parsing."""
     print("\n🔧 Testing XML Schema parsing...")
+    print("📝 Generating XSD descriptions...")
     
-    generator = AIDescriptionGenerator()
+    # Create a temporary XSD file
+    xsd_content = '''<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <xsd:element name="Order">
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="CustomerID" type="xsd:string"/>
+                <xsd:element name="OrderID" type="xsd:string"/>
+                <xsd:element name="OrderDate" type="xsd:date"/>
+                <xsd:element name="Items" type="xsd:string" maxOccurs="unbounded"/>
+                <xsd:element name="TotalAmount" type="xsd:decimal"/>
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+</xsd:schema>'''
     
-    # Sample XSD content
-    sample_xsd = '''<?xml version="1.0" encoding="UTF-8"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
-    <xs:element name="order">
-        <xs:complexType>
-            <xs:sequence>
-                <xs:element name="orderId" type="xs:string"/>
-                <xs:element name="customerId" type="xs:string"/>
-                <xs:element name="orderDate" type="xs:dateTime"/>
-                <xs:element name="items" type="itemList"/>
-                <xs:element name="totalAmount" type="xs:decimal"/>
-            </xs:sequence>
-        </xs:complexType>
-    </xs:element>
-    
-    <xs:complexType name="itemList">
-        <xs:sequence>
-            <xs:element name="item" type="orderItem" maxOccurs="unbounded"/>
-        </xs:sequence>
-    </xs:complexType>
-    
-    <xs:complexType name="orderItem">
-        <xs:sequence>
-            <xs:element name="productId" type="xs:string"/>
-            <xs:element name="quantity" type="xs:integer"/>
-            <xs:element name="price" type="xs:decimal"/>
-        </xs:sequence>
-    </xs:complexType>
-</xs:schema>'''
-    
-    # Create temporary file
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.xsd', delete=False) as temp_file:
-        temp_file.write(sample_xsd)
-        temp_file_path = temp_file.name
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.xsd', delete=False) as f:
+        f.write(xsd_content)
+        temp_file = f.name
     
     try:
-        # Generate descriptions
-        print("📝 Generating XSD descriptions...")
-        result = generator.generate_descriptions(temp_file_path, 'xsd')
+        generator = AIDescriptionGenerator()
+        result = generator.generate_descriptions(temp_file, 'xsd')
         
         print("\n🔹 Short Description:")
         print(result['short_description'])
+        print()
         
-        print("\n📋 Detailed Description:")
+        print("📋 Detailed Description:")
         print(result['detailed_description'])
+        print()
         
-        print("\n✅ XSD test completed successfully!")
+        print("✅ XSD test completed successfully!")
         
     except Exception as e:
-        print(f"❌ Error during XSD test: {e}")
-        import traceback
-        traceback.print_exc()
-    
+        print(f"❌ Error processing xsd file: {e}")
     finally:
-        # Clean up
-        if os.path.exists(temp_file_path):
-            os.unlink(temp_file_path)
+        if os.path.exists(temp_file):
+            os.unlink(temp_file)
+
+def test_wsdl():
+    """Test WSDL parsing."""
+    print("\n🌐 Testing WSDL parsing...")
+    print("📝 Generating WSDL descriptions...")
+    
+    # Use the test WSDL file
+    wsdl_file = "test_wsdl.xml"
+    
+    try:
+        generator = AIDescriptionGenerator()
+        result = generator.generate_descriptions(wsdl_file, 'wsdl')
+        
+        print("\n🔹 Short Description:")
+        print(result['short_description'])
+        print()
+        
+        print("📋 Detailed Description:")
+        print(result['detailed_description'])
+        print()
+        
+        # Display schema information
+        schema_info = result.get('schema_info', {})
+        print("🔍 Schema Information:")
+        print(f"File Type: {schema_info.get('file_type', 'Unknown')}")
+        print(f"Total Structures: {schema_info.get('total_structures', 0)}")
+        
+        structures = schema_info.get('structures', [])
+        if structures:
+            for i, structure in enumerate(structures):
+                print(f"Structure {i+1}: {structure.get('name', 'Unknown')} ({structure.get('type', 'Unknown')})")
+        
+        print()
+        print("✅ WSDL test completed successfully!")
+        
+    except Exception as e:
+        print(f"❌ Error processing wsdl file: {e}")
 
 if __name__ == "__main__":
-    print("🔨 The Forge - AI Description Generator Test")
-    print("="*50)
-    
-    # Test JSON Schema
     test_ai_description_generator()
-    
-    # Test XML Schema
     test_xml_schema()
-    
+    test_wsdl()
     print("\n🎉 All tests completed!") 
