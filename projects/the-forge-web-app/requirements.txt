@@ -4,4 +4,6 @@ lxml>=4.9.0
 pandas>=1.5.0
 streamlit-extras>=0.7.0
 streamlit-option-menu>=0.4.0
-streamlit-aggrid>=1.1.0 
+streamlit-aggrid>=1.1.0
+transformers>=4.30.0
+torch>=2.0.0 
