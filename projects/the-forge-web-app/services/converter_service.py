@@ -7,6 +7,10 @@ from .json_to_schema_converter import JSONToSchemaConverter
 from .xml_to_xsd_converter import XMLToXSDConverter
 from .xsd_to_xml_converter import XSDToXMLConverter
 from .json_schema_to_json_converter import JSONSchemaToJSONConverter
+from .xsd_to_json_schema_converter import XSDToJSONSchemaConverter
+from .json_schema_to_xsd_converter import JSONSchemaToXSDConverter
+from .xml_to_json_schema_converter import XMLToJSONSchemaConverter
+from .json_to_xml_converter import JSONToXMLConverter
 
 
 class ConverterService:
@@ -19,6 +23,10 @@ class ConverterService:
         self.xml_to_xsd = XMLToXSDConverter()
         self.xsd_to_xml = XSDToXMLConverter()
         self.json_schema_to_json = JSONSchemaToJSONConverter()
+        self.xsd_to_json_schema = XSDToJSONSchemaConverter()
+        self.json_schema_to_xsd = JSONSchemaToXSDConverter()
+        self.xml_to_json_schema = XMLToJSONSchemaConverter()
+        self.json_to_xml = JSONToXMLConverter()
     
     def convert_json_example_to_schema(self, json_data: Any, schema_name: str = "GeneratedSchema") -> Dict[str, Any]:
         """
@@ -44,6 +52,36 @@ class ConverterService:
         """
         return self.json_schema_to_json.convert_json_schema_to_json_example(schema, num_examples)
     
+    def convert_xsd_to_json_schema(self, xsd_content: str, schema_name: str = "GeneratedSchema") -> Dict[str, Any]:
+        """
+        Convert XSD schema to JSON Schema.
+        """
+        return self.xsd_to_json_schema.convert_xsd_to_json_schema(xsd_content, schema_name)
+    
+    def convert_json_schema_to_xsd(self, schema: Dict[str, Any], schema_name: str = "GeneratedSchema") -> str:
+        """
+        Convert JSON Schema to XSD schema.
+        """
+        return self.json_schema_to_xsd.convert_json_schema_to_xsd(schema, schema_name)
+    
+    def convert_xml_to_json_schema(self, xml_content: str, schema_name: str = "GeneratedSchema") -> Dict[str, Any]:
+        """
+        Convert XML example to JSON Schema.
+        """
+        return self.xml_to_json_schema.convert_xml_to_json_schema(xml_content, schema_name)
+    
+    def convert_json_to_xml(self, json_data: Any, root_name: str = "root") -> str:
+        """
+        Convert JSON example to XML.
+        """
+        return self.json_to_xml.convert_json_to_xml(json_data, root_name)
+    
+    def convert_json_schema_to_xml(self, schema: Dict[str, Any], root_name: str = "root") -> str:
+        """
+        Convert JSON Schema to XML example.
+        """
+        return self.json_to_xml.convert_json_schema_to_xml(schema, root_name)
+    
     def validate_conversion(self, conversion_type: str, input_data: Any, output_data: Any) -> bool:
         """
         Validate a conversion result.
@@ -56,6 +94,14 @@ class ConverterService:
             return self.xsd_to_xml.validate_xml(output_data)
         elif conversion_type == "json_schema_to_json":
             return self.json_schema_to_json.validate_example(output_data[0], input_data)
+        elif conversion_type == "xsd_to_json_schema":
+            return self.xsd_to_json_schema.validate_json_schema(output_data)
+        elif conversion_type == "json_schema_to_xsd":
+            return self.json_schema_to_xsd.validate_xsd(output_data)
+        elif conversion_type == "xml_to_json_schema":
+            return self.xml_to_json_schema.validate_json_schema(output_data)
+        elif conversion_type in ["json_to_xml", "json_schema_to_xml"]:
+            return self.json_to_xml.validate_xml(output_data)
         else:
             return False
     
@@ -71,6 +117,14 @@ class ConverterService:
             return self.xsd_to_xml.get_example_statistics(output_data)
         elif conversion_type == "json_schema_to_json":
             return self.json_schema_to_json.get_example_statistics(output_data)
+        elif conversion_type == "xsd_to_json_schema":
+            return self.xsd_to_json_schema.get_schema_statistics(output_data)
+        elif conversion_type == "json_schema_to_xsd":
+            return self.json_schema_to_xsd.get_schema_statistics(output_data)
+        elif conversion_type == "xml_to_json_schema":
+            return self.xml_to_json_schema.get_schema_statistics(output_data)
+        elif conversion_type in ["json_to_xml", "json_schema_to_xml"]:
+            return self.json_to_xml.get_xml_statistics(output_data)
         else:
             return {}
     
@@ -103,6 +157,36 @@ class ConverterService:
                 "input_type": "JSON Schema",
                 "output_type": "JSON"
             },
+            "xsd_to_json_schema": {
+                "name": "XSD to JSON Schema",
+                "description": "Convert XSD schemas to JSON Schema",
+                "input_type": "XSD",
+                "output_type": "JSON Schema"
+            },
+            "json_schema_to_xsd": {
+                "name": "JSON Schema to XSD",
+                "description": "Convert JSON Schema to XSD schemas",
+                "input_type": "JSON Schema",
+                "output_type": "XSD"
+            },
+            "xml_to_json_schema": {
+                "name": "XML Example to JSON Schema",
+                "description": "Convert XML examples to JSON Schema",
+                "input_type": "XML",
+                "output_type": "JSON Schema"
+            },
+            "json_to_xml": {
+                "name": "JSON Example to XML",
+                "description": "Convert JSON examples to XML",
+                "input_type": "JSON",
+                "output_type": "XML"
+            },
+            "json_schema_to_xml": {
+                "name": "JSON Schema to XML Example",
+                "description": "Convert JSON Schema to XML examples",
+                "input_type": "JSON Schema",
+                "output_type": "XML"
+            },
             "json_to_excel": {
                 "name": "JSON Example to Excel",
                 "description": "Convert JSON examples to Excel format",
@@ -111,7 +195,7 @@ class ConverterService:
             },
             "json_schema_to_excel": {
                 "name": "JSON Schema to Excel",
-                "description": "Convert JSON schemas to Excel format",
+                "description": "Convert JSON Schema to Excel format",
                 "input_type": "JSON Schema",
                 "output_type": "Excel"
             },
@@ -126,36 +210,6 @@ class ConverterService:
                 "description": "Convert XML examples to Excel format",
                 "input_type": "XML",
                 "output_type": "Excel"
-            },
-            "xsd_to_json_schema": {
-                "name": "XSD to JSON Schema",
-                "description": "Convert XSD schemas to JSON schemas",
-                "input_type": "XSD",
-                "output_type": "JSON Schema"
-            },
-            "json_schema_to_xsd": {
-                "name": "JSON Schema to XSD",
-                "description": "Convert JSON schemas to XSD schemas",
-                "input_type": "JSON Schema",
-                "output_type": "XSD"
-            },
-            "xml_to_json_schema": {
-                "name": "XML Example to JSON Schema",
-                "description": "Convert XML examples to JSON schemas",
-                "input_type": "XML",
-                "output_type": "JSON Schema"
-            },
-            "json_to_xml": {
-                "name": "JSON Example to XML",
-                "description": "Convert JSON examples to XML format",
-                "input_type": "JSON",
-                "output_type": "XML"
-            },
-            "json_schema_to_xml": {
-                "name": "JSON Schema to XML",
-                "description": "Convert JSON schemas to XML format",
-                "input_type": "JSON Schema",
-                "output_type": "XML"
             }
         }
     
@@ -225,13 +279,32 @@ class ConverterService:
                 num_examples = kwargs.get('num_examples', 1)
                 return self.convert_json_schema_to_json_example(schema, num_examples)
             
+            elif conversion_type == "xsd_to_json_schema":
+                schema_name = kwargs.get('schema_name', 'GeneratedSchema')
+                return self.convert_xsd_to_json_schema(content, schema_name)
+            
+            elif conversion_type == "json_schema_to_xsd":
+                schema = json.loads(content)
+                schema_name = kwargs.get('schema_name', 'GeneratedSchema')
+                return self.convert_json_schema_to_xsd(schema, schema_name)
+            
+            elif conversion_type == "xml_to_json_schema":
+                schema_name = kwargs.get('schema_name', 'GeneratedSchema')
+                return self.convert_xml_to_json_schema(content, schema_name)
+            
+            elif conversion_type == "json_to_xml":
+                json_data = json.loads(content)
+                root_name = kwargs.get('root_name', 'root')
+                return self.convert_json_to_xml(json_data, root_name)
+            
+            elif conversion_type == "json_schema_to_xml":
+                schema = json.loads(content)
+                root_name = kwargs.get('root_name', 'root')
+                return self.convert_json_schema_to_xml(schema, root_name)
+            
             elif conversion_type in ["json_to_excel", "json_schema_to_excel", "xsd_to_excel", "xml_to_excel"]:
                 # These will be handled by the ExcelExporter service
                 return self._convert_to_excel(file_path, conversion_type)
-            
-            elif conversion_type in ["xsd_to_json_schema", "json_schema_to_xsd", "xml_to_json_schema", "json_to_xml", "json_schema_to_xml"]:
-                # These will be implemented as needed
-                return self._convert_cross_format(file_path, conversion_type, **kwargs)
             
             else:
                 raise ValueError(f"Unsupported conversion type: {conversion_type}")
@@ -248,47 +321,12 @@ class ConverterService:
         # by calling the appropriate ExcelExporter methods
         raise NotImplementedError(f"Excel conversion for {conversion_type} will be handled by ExcelExporter service")
     
-    def _convert_cross_format(self, file_path: str, conversion_type: str, **kwargs) -> Any:
-        """
-        Handle cross-format conversions (XSD to JSON Schema, etc.).
-        """
-        if conversion_type == "xsd_to_json_schema":
-            # Convert XSD to JSON Schema
-            with open(file_path, 'r', encoding='utf-8') as f:
-                xsd_content = f.read()
-            # This would require implementing XSD to JSON Schema conversion
-            raise NotImplementedError("XSD to JSON Schema conversion not yet implemented")
-        
-        elif conversion_type == "json_schema_to_xsd":
-            # Convert JSON Schema to XSD
-            with open(file_path, 'r', encoding='utf-8') as f:
-                schema_content = json.loads(f.read())
-            # This would require implementing JSON Schema to XSD conversion
-            raise NotImplementedError("JSON Schema to XSD conversion not yet implemented")
-        
-        elif conversion_type == "xml_to_json_schema":
-            # Convert XML to JSON Schema
-            with open(file_path, 'r', encoding='utf-8') as f:
-                xml_content = f.read()
-            # This would require implementing XML to JSON Schema conversion
-            raise NotImplementedError("XML to JSON Schema conversion not yet implemented")
-        
-        elif conversion_type in ["json_to_xml", "json_schema_to_xml"]:
-            # Convert JSON/JSON Schema to XML
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            # This would require implementing JSON to XML conversion
-            raise NotImplementedError(f"{conversion_type} conversion not yet implemented")
-        
-        else:
-            raise ValueError(f"Unsupported cross-format conversion: {conversion_type}")
-    
     def save_conversion_result(self, result: Any, conversion_type: str, output_path: str) -> str:
         """
         Save conversion result to a file.
         """
         try:
-            if conversion_type in ["json_to_schema", "json_schema_to_json"]:
+            if conversion_type in ["json_to_schema", "json_schema_to_json", "xsd_to_json_schema", "xml_to_json_schema"]:
                 with open(output_path, 'w', encoding='utf-8') as f:
                     json.dump(result, f, indent=2, ensure_ascii=False)
             else:
@@ -325,6 +363,36 @@ class ConverterService:
                 "input_format": "JSON Schema",
                 "output_format": "JSON Example",
                 "features": "Random data generation, format compliance",
+                "example": '{"type": "object", "properties": {"name": {"type": "string"}}}'
+            },
+            "xsd_to_json_schema": {
+                "input_format": "XSD Schema",
+                "output_format": "JSON Schema (draft-07)",
+                "features": "Type mapping, constraint conversion",
+                "example": '<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">...</xs:schema>'
+            },
+            "json_schema_to_xsd": {
+                "input_format": "JSON Schema",
+                "output_format": "XSD Schema",
+                "features": "Type mapping, constraint conversion",
+                "example": '{"type": "object", "properties": {"name": {"type": "string"}}}'
+            },
+            "xml_to_json_schema": {
+                "input_format": "XML document",
+                "output_format": "JSON Schema (draft-07)",
+                "features": "Structure analysis, type inference",
+                "example": '<person><name>John</name><age>30</age></person>'
+            },
+            "json_to_xml": {
+                "input_format": "JSON object or array",
+                "output_format": "XML document",
+                "features": "Element creation, attribute support",
+                "example": '{"name": "John", "age": 30}'
+            },
+            "json_schema_to_xml": {
+                "input_format": "JSON Schema",
+                "output_format": "XML Example",
+                "features": "Sample data generation, structure preservation",
                 "example": '{"type": "object", "properties": {"name": {"type": "string"}}}'
             },
             "json_to_excel": {
