@@ -423,15 +423,19 @@ st.markdown("""
 # Initialize services with caching
 @st.cache_resource
 def get_services():
-    return {
-        'xsd_parser': XSDParser(),
-        'json_schema_parser': JSONSchemaParser(),
-        'excel_exporter': ExcelExporter(),
-        'mapping_service': ExcelMappingService(),
-
-
-        'converter': ConverterService()
-    }
+    try:
+        services = {
+            'xsd_parser': XSDParser(),
+            'json_schema_parser': JSONSchemaParser(),
+            'excel_exporter': ExcelExporter(),
+            'mapping_service': ExcelMappingService(),
+            'converter': ConverterService()
+        }
+        return services
+    except Exception as e:
+        st.error(f"Error initializing services: {str(e)}")
+        # Return empty services dict as fallback
+        return {}
 
 def main():
     # Header
@@ -443,7 +447,14 @@ def main():
     ''', unsafe_allow_html=True)
     
     # Get services
-    services = get_services()
+    try:
+        services = get_services()
+        if not services:
+            st.error("Failed to initialize services. Please refresh the page.")
+            st.stop()
+    except Exception as e:
+        st.error(f"Error getting services: {str(e)}")
+        st.stop()
     
     # Sidebar Header
     st.sidebar.markdown("""
