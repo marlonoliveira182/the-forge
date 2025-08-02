@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as ET
+import os
 
 XSD_NS = '{http://www.w3.org/2001/XMLSchema}'
 
@@ -269,3 +270,65 @@ class XSDParser:
         for elem in root.findall(f'{XSD_NS}element'):
             rows.extend(self.parse_element(elem, complex_types, simple_types, 1, category='message'))
         return rows 
+
+    def parse_xsd_file_by_messages(self, xsd_path):
+        """
+        Parse XSD file and group results by message/element name.
+        Returns a dictionary where keys are message names and values are lists of rows.
+        """
+        tree = ET.parse(xsd_path)
+        root = tree.getroot()
+        # Collect all simpleTypes and their restrictions
+        simple_types = {}
+        for st in root.findall(f'.//{XSD_NS}simpleType'):
+            name = st.get('name')
+            if not name:
+                continue
+            restriction = st.find(XSD_NS+'restriction')
+            base = restriction.get('base') if restriction is not None else None
+            restrictions = {}
+            if restriction is not None:
+                for cons in restriction:
+                    cons_name = cons.tag.replace(XSD_NS, '')
+                    val = cons.get('value')
+                    if val:
+                        restrictions[cons_name] = val
+            simple_types[name] = {'base': base, 'restrictions': restrictions}
+        complex_types = {ct.get('name'): ct for ct in root.findall(f'.//{XSD_NS}complexType') if ct.get('name')}
+        
+        # Group rows by element name
+        messages = {}
+        for elem in root.findall(f'{XSD_NS}element'):
+            element_name = self.get_attr(elem, 'name')
+            if not element_name:
+                continue
+            
+            # Parse this element's rows
+            rows = self.parse_element(elem, complex_types, simple_types, 1, category='message')
+            
+            # Use element name as sheet name (sanitized for Excel)
+            sheet_name = self._sanitize_sheet_name(element_name)
+            messages[sheet_name] = rows
+        
+        return messages
+    
+    def _sanitize_sheet_name(self, name):
+        """
+        Sanitize a name to be used as an Excel sheet name.
+        Excel sheet names have restrictions: max 31 chars, no special chars.
+        """
+        # Remove or replace invalid characters
+        invalid_chars = ['\\', '/', '*', '?', ':', '[', ']']
+        sanitized = name
+        for char in invalid_chars:
+            sanitized = sanitized.replace(char, '_')
+        
+        # Limit length to 31 characters
+        if len(sanitized) > 31:
+            sanitized = sanitized[:31]
+        
+        # Ensure it's not empty
+        if not sanitized:
+            sanitized = "Sheet"
+        
+        return sanitized 

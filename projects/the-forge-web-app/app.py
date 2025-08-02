@@ -4,14 +4,13 @@ import tempfile
 import json
 import xml.etree.ElementTree as ET
 from io import BytesIO
-import base64
+
 import openpyxl
 import difflib
 from openpyxl.utils import get_column_letter
 
 # Import modern UI libraries
-from streamlit_extras.card import card
-from streamlit_extras.let_it_rain import rain
+
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode
 
 # Import the microservices
@@ -20,7 +19,7 @@ from services.json_schema_parser_service import JSONSchemaParser
 from services.excel_export_service import ExcelExporter
 from services.wsdl_to_xsd_extractor import merge_xsd_from_wsdl
 from services.excel_mapping_service import ExcelMappingService
-from services.json_to_excel_service import JSONToExcelService
+
 from services.case_converter_service import pascal_to_camel, camel_to_pascal
 
 from services.converter_service import ConverterService
@@ -429,7 +428,7 @@ def get_services():
         'json_schema_parser': JSONSchemaParser(),
         'excel_exporter': ExcelExporter(),
         'mapping_service': ExcelMappingService(),
-        'json_to_excel': JSONToExcelService(),
+
 
         'converter': ConverterService()
     }
@@ -467,8 +466,7 @@ def main():
     if st.sidebar.button("🔧 WSDL to XSD", key="nav_wsdl", use_container_width=True):
         st.session_state.current_page = "WSDL to XSD"
     
-    if st.sidebar.button("📋 Schema to Excel", key="nav_excel", use_container_width=True):
-        st.session_state.current_page = "Schema to Excel"
+
     
 
     
@@ -493,8 +491,7 @@ def main():
         show_mapping_page(services)
     elif st.session_state.current_page == "WSDL to XSD":
         show_wsdl_to_xsd_page(services)
-    elif st.session_state.current_page == "Schema to Excel":
-        show_schema_to_excel_page(services)
+
 
     elif st.session_state.current_page == "Converter":
         show_converter_page(services)
@@ -689,98 +686,7 @@ def show_wsdl_to_xsd_page(services):
         else:
             st.markdown('<div class="warning-message">⚠️ Please upload a WSDL file</div>', unsafe_allow_html=True)
 
-def show_schema_to_excel_page(services):
-    st.markdown('<div class="section-header"><h2>📋 Schema to Excel</h2></div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    Convert schema files to Excel format for easy analysis and documentation.
-    """)
-    
-    schema_file = st.file_uploader(
-        "Upload schema file",
-        type=['xsd', 'xml', 'json'],
-        key="schema_uploader",
-        help="Upload your schema file (XSD, XML, or JSON Schema)"
-    )
-    
-    if schema_file:
-        st.markdown(f'<div class="success-message">✅ Uploaded: {schema_file.name}</div>', unsafe_allow_html=True)
-        # Show file preview
-        content = schema_file.read()
-        schema_file.seek(0)  # Reset file pointer
-        with st.expander("📄 File Preview"):
-            try:
-                decoded_content = content.decode('utf-8')
-                preview = decoded_content[:1000] + "..." if len(decoded_content) > 1000 else decoded_content
-                # Determine language based on file extension
-                if schema_file.name.lower().endswith('.json'):
-                    st.code(preview, language="json")
-                else:
-                    st.code(preview, language="xml")
-            except UnicodeDecodeError:
-                st.code(content[:500], language="text")
-    
-    if st.button("📋 Convert to Excel", type="primary", use_container_width=True):
-        if schema_file:
-            with st.spinner("🔄 Converting to Excel..."):
-                try:
-                    # Convert to Excel
-                    result = process_schema_to_excel(schema_file, services)
-                    if result:
-                        st.markdown('<div class="success-message">✅ Excel file generated successfully!</div>', unsafe_allow_html=True)
-                        
-                        # Show preview using AgGrid
-                        try:
-                            import pandas as pd
-                            from io import BytesIO
-                            
-                            # Read the Excel file into a DataFrame
-                            df = pd.read_excel(BytesIO(result))
-                            
-                            st.markdown("### 📊 Data Preview")
-                            
-                            # Configure AgGrid
-                            gb = GridOptionsBuilder.from_dataframe(df)
-                            gb.configure_pagination(paginationAutoPageSize=True)
-                            gb.configure_side_bar()
-                            gb.configure_selection('single', use_checkbox=True)
-                            gb.configure_column("Level1", width=120)
-                            gb.configure_column("Level2", width=120)
-                            gb.configure_column("Level3", width=120)
-                            gb.configure_column("Type", width=150)
-                            gb.configure_column("Description", width=200)
-                            gb.configure_column("Cardinality", width=100)
-                            gridOptions = gb.build()
-                            
-                            # Display the grid
-                            grid_response = AgGrid(
-                                df,
-                                gridOptions=gridOptions,
-                                data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-                                update_mode=GridUpdateMode.SELECTION_CHANGED,
-                                fit_columns_on_grid_load=True,
-                                theme="streamlit",
-                                height=400,
-                                allow_unsafe_jscode=True,
-                            )
-                            
-                        except Exception as preview_error:
-                            st.warning(f"Could not show preview: {preview_error}")
-                        
-                        st.download_button(
-                            label="📥 Download Excel File",
-                            data=result,
-                            file_name="schema_structure.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            use_container_width=True
-                        )
-                    else:
-                        st.markdown('<div class="error-message">❌ Failed to convert to Excel</div>', unsafe_allow_html=True)
-                except Exception as e:
-                    st.markdown(f'<div class="error-message">❌ Error: {str(e)}</div>', unsafe_allow_html=True)
-            
-        else:
-            st.markdown('<div class="warning-message">⚠️ Please upload a schema file</div>', unsafe_allow_html=True)
+
 
 def show_about_page():
     """
@@ -795,7 +701,7 @@ def show_about_page():
     
     - **📊 Schema Mapping**: Create field mappings between different schema formats (XSD, JSON Schema)
     - **🔧 WSDL to XSD Extraction**: Extract XSD schemas from WSDL files
-    - **📋 Schema to Excel**: Convert schema files to Excel format for analysis
+
     
     ### 📁 Supported Formats
     
@@ -1167,11 +1073,11 @@ def process_excel_conversion(file_path: str, conversion_key: str, services: dict
             return output_buffer.getvalue()
         
         elif conversion_key == "xsd_to_excel":
-            # Convert XSD to Excel
+            # Convert XSD to Excel with multiple sheets for multiple messages
             xsd_parser = services['xsd_parser']
-            parsed_data = xsd_parser.parse_xsd_file(file_path)
+            parsed_data = xsd_parser.parse_xsd_file_by_messages(file_path)
             output_buffer = BytesIO()
-            excel_exporter.export({'schema': parsed_data}, output_buffer)
+            excel_exporter.export(parsed_data, output_buffer)
             output_buffer.seek(0)
             return output_buffer.getvalue()
         
@@ -1859,29 +1765,7 @@ def process_wsdl_to_xsd(wsdl_file, services):
         st.error(f"Error in WSDL extraction: {str(e)}")
         return None
 
-def process_schema_to_excel(schema_file, services):
-    try:
-        # Create temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{schema_file.name.split('.')[-1]}") as temp_file:
-            temp_file.write(schema_file.read())
-            temp_path = temp_file.name
-        
-        # Parse schema
-        schema_data = parse_schema_file(temp_path, services)
-        
-        # Create Excel file
-        output_buffer = BytesIO()
-        services['excel_exporter'].export({'schema': schema_data}, output_buffer)
-        
-        # Clean up temp file
-        os.unlink(temp_path)
-        
-        output_buffer.seek(0)
-        return output_buffer.getvalue()
-        
-    except Exception as e:
-        st.error(f"Error in schema to Excel: {str(e)}")
-        return None
+
 
 
 def parse_schema_file(file_path, services):

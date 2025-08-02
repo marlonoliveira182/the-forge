@@ -221,7 +221,7 @@ class JSONToSchemaConverter:
     
     def _create_test_instance(self, schema: Dict[str, Any]) -> Any:
         """
-        Create a minimal test instance from a schema.
+        Create a minimal test instance from a schema that satisfies all constraints.
         """
         schema_type = schema.get("type")
         
@@ -233,15 +233,49 @@ class JSONToSchemaConverter:
         
         elif schema_type == "array":
             items_schema = schema.get("items", {})
-            return [self._create_test_instance(items_schema)]
+            min_items = schema.get("minItems", 1)
+            # Create at least min_items instances
+            return [self._create_test_instance(items_schema) for _ in range(min_items)]
         
         elif schema_type == "string":
-            return "test"
+            # Handle format-specific constraints
+            format_type = schema.get("format")
+            min_length = schema.get("minLength", 1)
+            max_length = schema.get("maxLength", 100)
+            
+            if format_type == "email":
+                return "test@example.com"
+            elif format_type == "date":
+                return "2023-01-01"
+            elif format_type == "date-time":
+                return "2023-01-01T00:00:00"
+            elif format_type == "uuid":
+                return "123e4567-e89b-12d3-a456-426614174000"
+            elif format_type == "uri":
+                return "https://example.com"
+            elif format_type == "ipv4":
+                return "192.168.1.1"
+            elif format_type == "ipv6":
+                return "2001:db8::1"
+            else:
+                # Create a string that satisfies length constraints
+                test_str = "test"
+                if min_length > len(test_str):
+                    test_str = "a" * min_length
+                elif max_length < len(test_str):
+                    test_str = test_str[:max_length]
+                return test_str
         
         elif schema_type == "integer":
+            minimum = schema.get("minimum")
+            if minimum is not None:
+                return max(0, minimum)
             return 0
         
         elif schema_type == "number":
+            minimum = schema.get("minimum")
+            if minimum is not None:
+                return max(0.0, minimum)
             return 0.0
         
         elif schema_type == "boolean":

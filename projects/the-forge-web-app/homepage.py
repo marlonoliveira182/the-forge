@@ -96,10 +96,7 @@ def show_home_page():
     <div class="tool-section">
         <h2>🛠️ Core Integration Tools</h2>
         <div class="tool-cards">
-            <div class="tool-card">
-                <h3>📋 Schema to Excel</h3>
-                <p>Convert XSD, XML, and JSON Schema files to Excel format for documentation and analysis.</p>
-            </div>
+
             <div class="tool-card">
                 <h3>🔧 WSDL to XSD</h3>
                 <p>Extract and convert WSDL files to XSD schemas for web service integration.</p>
