@@ -1124,9 +1124,9 @@ def process_excel_conversion(file_path: str, conversion_key: str, services: dict
             with open(file_path, 'r', encoding='utf-8') as f:
                 yaml_content = f.read()
             
-            # Convert YAML to JSON Schema
-            yaml_to_json_schema = services['converter'].yaml_to_json_schema
-            schema_data = yaml_to_json_schema.convert_yaml_to_json_schema(yaml_content, "GeneratedSchema")
+            # Convert YAML to JSON Schema using ConverterService
+            converter_service = services['converter']
+            schema_data = converter_service.convert_yaml_to_json_schema(yaml_content, "GeneratedSchema")
             
             # Parse JSON Schema and convert to Excel
             json_schema_parser = services['json_schema_parser']
