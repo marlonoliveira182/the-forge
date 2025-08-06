@@ -940,11 +940,26 @@ def show_converter_page(services):
                         
                         # Validate result if requested
                         if conversion_key in ["json_to_schema", "yaml_to_json_schema"] and validate_schema:
-                            is_valid = converter_service.validate_conversion(conversion_key, None, result)
-                            if is_valid:
-                                st.markdown('<div class="success-message">✅ Generated schema is valid!</div>', unsafe_allow_html=True)
+                            # Handle case where YAML conversion returns multiple schemas
+                            if conversion_key == "yaml_to_json_schema" and isinstance(result, list):
+                                valid_count = 0
+                                total_count = len(result)
+                                for schema in result:
+                                    if converter_service.validate_conversion(conversion_key, None, schema):
+                                        valid_count += 1
+                                
+                                if valid_count == total_count:
+                                    st.markdown(f'<div class="success-message">✅ All {total_count} generated schemas are valid!</div>', unsafe_allow_html=True)
+                                elif valid_count > 0:
+                                    st.markdown(f'<div class="warning-message">⚠️ {valid_count}/{total_count} generated schemas are valid</div>', unsafe_allow_html=True)
+                                else:
+                                    st.markdown('<div class="warning-message">⚠️ All generated schemas validation failed</div>', unsafe_allow_html=True)
                             else:
-                                st.markdown('<div class="warning-message">⚠️ Generated schema validation failed</div>', unsafe_allow_html=True)
+                                is_valid = converter_service.validate_conversion(conversion_key, None, result)
+                                if is_valid:
+                                    st.markdown('<div class="success-message">✅ Generated schema is valid!</div>', unsafe_allow_html=True)
+                                else:
+                                    st.markdown('<div class="warning-message">⚠️ Generated schema validation failed</div>', unsafe_allow_html=True)
                         
                         elif conversion_key == "xml_to_xsd" and validate_xsd:
                             is_valid = converter_service.validate_conversion(conversion_key, None, result)
@@ -968,15 +983,32 @@ def show_converter_page(services):
                                 col1, col2, col3 = st.columns(3)
                                 
                                 if conversion_key in ["json_to_schema", "yaml_to_json_schema"]:
-                                    with col1:
-                                        st.metric("Total Properties", stats.get('total_properties', 0))
-                                        st.metric("Required Properties", stats.get('required_properties', 0))
-                                    with col2:
-                                        st.metric("Object Properties", stats.get('object_properties', 0))
-                                        st.metric("Array Properties", stats.get('array_properties', 0))
-                                    with col3:
-                                        st.metric("Primitive Properties", stats.get('primitive_properties', 0))
-                                        st.metric("Max Depth", stats.get('max_depth', 0))
+                                    # Handle case where YAML conversion returns multiple schemas
+                                    if conversion_key == "yaml_to_json_schema" and isinstance(result, list):
+                                        total_properties = sum(stats.get('total_properties', 0) for stats in [converter_service.get_conversion_statistics(conversion_key, schema) for schema in result])
+                                        total_required = sum(stats.get('required_properties', 0) for stats in [converter_service.get_conversion_statistics(conversion_key, schema) for schema in result])
+                                        total_objects = sum(stats.get('object_properties', 0) for stats in [converter_service.get_conversion_statistics(conversion_key, schema) for schema in result])
+                                        total_arrays = sum(stats.get('array_properties', 0) for stats in [converter_service.get_conversion_statistics(conversion_key, schema) for schema in result])
+                                        
+                                        with col1:
+                                            st.metric("Total Schemas", len(result))
+                                            st.metric("Total Properties", total_properties)
+                                        with col2:
+                                            st.metric("Required Properties", total_required)
+                                            st.metric("Object Properties", total_objects)
+                                        with col3:
+                                            st.metric("Array Properties", total_arrays)
+                                            st.metric("Schema Count", len(result))
+                                    else:
+                                        with col1:
+                                            st.metric("Total Properties", stats.get('total_properties', 0))
+                                            st.metric("Required Properties", stats.get('required_properties', 0))
+                                        with col2:
+                                            st.metric("Object Properties", stats.get('object_properties', 0))
+                                            st.metric("Array Properties", stats.get('array_properties', 0))
+                                        with col3:
+                                            st.metric("Primitive Properties", stats.get('primitive_properties', 0))
+                                            st.metric("Max Depth", stats.get('max_depth', 0))
                                 
                                 elif conversion_key == "xml_to_xsd":
                                     with col1:
@@ -1008,7 +1040,15 @@ def show_converter_page(services):
                         st.markdown("#### 📄 Conversion Result")
                         
                         if conversion_key in ["json_to_schema", "json_schema_to_json", "yaml_to_json_schema"]:
-                            st.json(result)
+                            # Handle case where YAML conversion returns multiple schemas
+                            if conversion_key == "yaml_to_json_schema" and isinstance(result, list):
+                                st.markdown(f"**Generated {len(result)} schemas:**")
+                                for i, schema in enumerate(result, 1):
+                                    st.markdown(f"**Schema {i}:**")
+                                    st.json(schema)
+                                    st.markdown("---")
+                            else:
+                                st.json(result)
                         elif conversion_key in ["json_to_excel", "json_schema_to_excel", "xsd_to_excel", "xml_to_excel"]:
                             # For Excel conversions, show success message and download button
                             st.markdown('<div class="success-message">✅ Excel file generated successfully!</div>', unsafe_allow_html=True)
@@ -1017,7 +1057,17 @@ def show_converter_page(services):
                         
                         # Download button
                         if conversion_key in ["json_to_schema", "json_schema_to_json", "yaml_to_json_schema"]:
-                            result_json = json.dumps(result, indent=2, ensure_ascii=False)
+                            # Handle case where YAML conversion returns multiple schemas
+                            if conversion_key == "yaml_to_json_schema" and isinstance(result, list):
+                                # Create a combined JSON with all schemas
+                                combined_result = {
+                                    "generated_schemas": result,
+                                    "total_schemas": len(result),
+                                    "schema_names": [schema.get("title", f"Schema_{i+1}") for i, schema in enumerate(result)]
+                                }
+                                result_json = json.dumps(combined_result, indent=2, ensure_ascii=False)
+                            else:
+                                result_json = json.dumps(result, indent=2, ensure_ascii=False)
                             file_extension = "json"
                             mime_type = "application/json"
                         elif conversion_key in ["json_to_excel", "json_schema_to_excel", "xsd_to_excel", "xml_to_excel"]:
@@ -1128,12 +1178,26 @@ def process_excel_conversion(file_path: str, conversion_key: str, services: dict
             converter_service = services['converter']
             schema_data = converter_service.convert_yaml_to_json_schema(yaml_content, "GeneratedSchema")
             
-            # Parse JSON Schema and convert to Excel
-            json_schema_parser = services['json_schema_parser']
-            schema_string = json.dumps(schema_data)
-            parsed_data = json_schema_parser.parse_json_schema_string(schema_string)
+            # Handle case where YAML conversion returns multiple schemas
+            if isinstance(schema_data, list):
+                # Create multiple sheets for multiple schemas
+                parsed_data = {}
+                json_schema_parser = services['json_schema_parser']
+                
+                for i, schema in enumerate(schema_data):
+                    schema_name = schema.get("title", f"Schema_{i+1}")
+                    schema_string = json.dumps(schema)
+                    parsed_schema = json_schema_parser.parse_json_schema_string(schema_string)
+                    parsed_data[schema_name] = parsed_schema
+            else:
+                # Single schema
+                json_schema_parser = services['json_schema_parser']
+                schema_string = json.dumps(schema_data)
+                parsed_data = json_schema_parser.parse_json_schema_string(schema_string)
+                parsed_data = {'schema': parsed_data}
+            
             output_buffer = BytesIO()
-            excel_exporter.export({'schema': parsed_data}, output_buffer)
+            excel_exporter.export(parsed_data, output_buffer)
             output_buffer.seek(0)
             return output_buffer.getvalue()
         

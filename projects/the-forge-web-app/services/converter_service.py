@@ -1,7 +1,7 @@
 import json
 import tempfile
 import os
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Union
 
 from .json_to_schema_converter import JSONToSchemaConverter
 from .xml_to_xsd_converter import XMLToXSDConverter
@@ -84,9 +84,10 @@ class ConverterService:
         """
         return self.json_to_xml.convert_json_schema_to_xml(schema, root_name)
     
-    def convert_yaml_to_json_schema(self, yaml_content: str, schema_name: str = "GeneratedSchema") -> Dict[str, Any]:
+    def convert_yaml_to_json_schema(self, yaml_content: str, schema_name: str = "GeneratedSchema") -> Union[Dict[str, Any], List[Dict[str, Any]]]:
         """
         Convert YAML content to JSON Schema.
+        Returns either a single schema or a list of schemas if multiple operations are detected.
         """
         return self.yaml_to_json_schema.convert_yaml_to_json_schema(yaml_content, schema_name)
     
