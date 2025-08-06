@@ -939,7 +939,7 @@ def show_converter_page(services):
                             )
                         
                         # Validate result if requested
-                        if conversion_key == "json_to_schema" and validate_schema:
+                        if conversion_key in ["json_to_schema", "yaml_to_json_schema"] and validate_schema:
                             is_valid = converter_service.validate_conversion(conversion_key, None, result)
                             if is_valid:
                                 st.markdown('<div class="success-message">✅ Generated schema is valid!</div>', unsafe_allow_html=True)
@@ -967,7 +967,7 @@ def show_converter_page(services):
                                 st.markdown("#### 📊 Conversion Statistics")
                                 col1, col2, col3 = st.columns(3)
                                 
-                                if conversion_key == "json_to_schema":
+                                if conversion_key in ["json_to_schema", "yaml_to_json_schema"]:
                                     with col1:
                                         st.metric("Total Properties", stats.get('total_properties', 0))
                                         st.metric("Required Properties", stats.get('required_properties', 0))
@@ -1007,7 +1007,7 @@ def show_converter_page(services):
                         # Display result
                         st.markdown("#### 📄 Conversion Result")
                         
-                        if conversion_key in ["json_to_schema", "json_schema_to_json"]:
+                        if conversion_key in ["json_to_schema", "json_schema_to_json", "yaml_to_json_schema"]:
                             st.json(result)
                         elif conversion_key in ["json_to_excel", "json_schema_to_excel", "xsd_to_excel", "xml_to_excel"]:
                             # For Excel conversions, show success message and download button
@@ -1016,7 +1016,7 @@ def show_converter_page(services):
                             st.code(result, language="xml")
                         
                         # Download button
-                        if conversion_key in ["json_to_schema", "json_schema_to_json"]:
+                        if conversion_key in ["json_to_schema", "json_schema_to_json", "yaml_to_json_schema"]:
                             result_json = json.dumps(result, indent=2, ensure_ascii=False)
                             file_extension = "json"
                             mime_type = "application/json"
