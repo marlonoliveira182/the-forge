@@ -204,7 +204,7 @@ def show_home_page():
         <h2>🛠️ Core Integration Tools</h2>
         <div class="homepage-tool-cards">
             
-            <div>
+            <div class="homepage-tool-card">
                 <h3>🔄 Converter</h3>
                 <p>Comprehensive format conversion between JSON, XML, XSD, and JSON Schema with intelligent type inference and validation.</p>
                 <div class="homepage-tool-features">
@@ -220,7 +220,7 @@ def show_home_page():
                 </div>
             </div>
             
-            <div>
+            <div class="homepage-tool-card">
                 <h3>📊 Schema Mapping</h3>
                 <p>Create intelligent field mappings between different schema formats with configurable similarity thresholds and fuzzy matching.</p>
                 <div class="homepage-tool-features">
@@ -236,7 +236,7 @@ def show_home_page():
                 </div>
             </div>
             
-            <div>
+            <div class="homepage-tool-card">
                 <h3>🔧 WSDL to XSD</h3>
                 <p>Extract and convert WSDL files to XSD schemas for web service integration and documentation.</p>
                 <div class="homepage-tool-features">

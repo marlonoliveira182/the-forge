@@ -11,6 +11,7 @@ from .xsd_to_json_schema_converter import XSDToJSONSchemaConverter
 from .json_schema_to_xsd_converter import JSONSchemaToXSDConverter
 from .xml_to_json_schema_converter import XMLToJSONSchemaConverter
 from .json_to_xml_converter import JSONToXMLConverter
+from .yaml_to_json_schema_converter import YAMLToJSONSchemaConverter
 
 
 class ConverterService:
@@ -27,6 +28,7 @@ class ConverterService:
         self.json_schema_to_xsd = JSONSchemaToXSDConverter()
         self.xml_to_json_schema = XMLToJSONSchemaConverter()
         self.json_to_xml = JSONToXMLConverter()
+        self.yaml_to_json_schema = YAMLToJSONSchemaConverter()
     
     def convert_json_example_to_schema(self, json_data: Any, schema_name: str = "GeneratedSchema") -> Dict[str, Any]:
         """
@@ -82,6 +84,12 @@ class ConverterService:
         """
         return self.json_to_xml.convert_json_schema_to_xml(schema, root_name)
     
+    def convert_yaml_to_json_schema(self, yaml_content: str, schema_name: str = "GeneratedSchema") -> Dict[str, Any]:
+        """
+        Convert YAML content to JSON Schema.
+        """
+        return self.yaml_to_json_schema.convert_yaml_to_json_schema(yaml_content, schema_name)
+    
     def validate_conversion(self, conversion_type: str, input_data: Any, output_data: Any) -> bool:
         """
         Validate a conversion result.
@@ -102,6 +110,8 @@ class ConverterService:
             return self.xml_to_json_schema.validate_json_schema(output_data)
         elif conversion_type in ["json_to_xml", "json_schema_to_xml"]:
             return self.json_to_xml.validate_xml(output_data)
+        elif conversion_type == "yaml_to_json_schema":
+            return self.yaml_to_json_schema.validate_json_schema(output_data)
         else:
             return False
     
@@ -125,6 +135,8 @@ class ConverterService:
             return self.xml_to_json_schema.get_schema_statistics(output_data)
         elif conversion_type in ["json_to_xml", "json_schema_to_xml"]:
             return self.json_to_xml.get_xml_statistics(output_data)
+        elif conversion_type == "yaml_to_json_schema":
+            return self.yaml_to_json_schema.get_schema_statistics(output_data)
         else:
             return {}
     
@@ -187,6 +199,18 @@ class ConverterService:
                 "input_type": "JSON Schema",
                 "output_type": "XML"
             },
+            "yaml_to_json_schema": {
+                "name": "YAML to JSON Schema",
+                "description": "Convert YAML content to JSON Schema",
+                "input_type": "YAML",
+                "output_type": "JSON Schema"
+            },
+            "yaml_to_excel": {
+                "name": "YAML to Excel",
+                "description": "Convert YAML content to Excel format",
+                "input_type": "YAML",
+                "output_type": "Excel"
+            },
             "json_to_excel": {
                 "name": "JSON Example to Excel",
                 "description": "Convert JSON examples to Excel format",
@@ -217,7 +241,7 @@ class ConverterService:
         """
         Get list of available source types.
         """
-        return ["json example", "json schema", "xsd", "xml example", "excel"]
+        return ["json example", "json schema", "xsd", "xml example", "yaml", "excel"]
     
     def get_target_types_for_source(self, source_type: str) -> List[str]:
         """
@@ -228,6 +252,7 @@ class ConverterService:
             "json schema": ["json example", "excel", "xsd", "xml"],
             "xsd": ["xml example", "excel", "json schema"],
             "xml example": ["xsd", "excel", "json schema"],
+            "yaml": ["json schema", "excel"],
             "excel": ["json schema", "xsd", "xml example"]
         }
         return conversion_map.get(source_type, [])
@@ -249,7 +274,9 @@ class ConverterService:
             ("json schema", "xsd"): "json_schema_to_xsd",
             ("xml example", "json schema"): "xml_to_json_schema",
             ("json example", "xml"): "json_to_xml",
-            ("json schema", "xml"): "json_schema_to_xml"
+            ("json schema", "xml"): "json_schema_to_xml",
+            ("yaml", "json schema"): "yaml_to_json_schema",
+            ("yaml", "excel"): "yaml_to_excel"
         }
         return conversion_keys.get((source_type, target_type), "")
     
@@ -302,6 +329,10 @@ class ConverterService:
                 root_name = kwargs.get('root_name', 'root')
                 return self.convert_json_schema_to_xml(schema, root_name)
             
+            elif conversion_type == "yaml_to_json_schema":
+                schema_name = kwargs.get('schema_name', 'GeneratedSchema')
+                return self.convert_yaml_to_json_schema(content, schema_name)
+            
             elif conversion_type in ["json_to_excel", "json_schema_to_excel", "xsd_to_excel", "xml_to_excel"]:
                 # These will be handled by the ExcelExporter service
                 return self._convert_to_excel(file_path, conversion_type)
@@ -326,7 +357,7 @@ class ConverterService:
         Save conversion result to a file.
         """
         try:
-            if conversion_type in ["json_to_schema", "json_schema_to_json", "xsd_to_json_schema", "xml_to_json_schema"]:
+            if conversion_type in ["json_to_schema", "json_schema_to_json", "xsd_to_json_schema", "xml_to_json_schema", "yaml_to_json_schema"]:
                 with open(output_path, 'w', encoding='utf-8') as f:
                     json.dump(result, f, indent=2, ensure_ascii=False)
             else:
@@ -418,6 +449,18 @@ class ConverterService:
                 "output_format": "Excel file (.xlsx)",
                 "features": "Structure analysis, element mapping",
                 "example": '<person><name>John</name><age>30</age></person>'
+            },
+            "yaml_to_json_schema": {
+                "input_format": "YAML document",
+                "output_format": "JSON Schema (draft-07)",
+                "features": "Type inference, format detection, structure analysis",
+                "example": "name: John\nage: 30\nemail: john@example.com"
+            },
+            "yaml_to_excel": {
+                "input_format": "YAML document",
+                "output_format": "Excel file (.xlsx)",
+                "features": "Structure analysis, hierarchical mapping",
+                "example": "name: John\nage: 30\nemail: john@example.com"
             }
         }
         return help_info.get(conversion_type, {

@@ -821,6 +821,8 @@ def show_converter_page(services):
             file_types = ['xsd', 'xml']
         elif source_type == "xml example":
             file_types = ['xml']
+        elif source_type == "yaml":
+            file_types = ['yaml', 'yml']
         elif source_type == "excel":
             file_types = ['xlsx', 'xls']
         
@@ -845,6 +847,8 @@ def show_converter_page(services):
                     
                     if uploaded_file.name.lower().endswith('.json'):
                         st.code(preview, language="json")
+                    elif uploaded_file.name.lower().endswith(('.yaml', '.yml')):
+                        st.code(preview, language="yaml")
                     else:
                         st.code(preview, language="xml")
                 except UnicodeDecodeError:
@@ -1115,6 +1119,24 @@ def process_excel_conversion(file_path: str, conversion_key: str, services: dict
             finally:
                 os.unlink(temp_xsd_path)
         
+        elif conversion_key == "yaml_to_excel":
+            # Convert YAML to Excel (first convert to JSON Schema, then to Excel)
+            with open(file_path, 'r', encoding='utf-8') as f:
+                yaml_content = f.read()
+            
+            # Convert YAML to JSON Schema
+            yaml_to_json_schema = services['converter'].yaml_to_json_schema
+            schema_data = yaml_to_json_schema.convert_yaml_to_json_schema(yaml_content, "GeneratedSchema")
+            
+            # Parse JSON Schema and convert to Excel
+            json_schema_parser = services['json_schema_parser']
+            schema_string = json.dumps(schema_data)
+            parsed_data = json_schema_parser.parse_json_schema_string(schema_string)
+            output_buffer = BytesIO()
+            excel_exporter.export({'schema': parsed_data}, output_buffer)
+            output_buffer.seek(0)
+            return output_buffer.getvalue()
+        
         else:
             raise ValueError(f"Unsupported Excel conversion: {conversion_key}")
     
@@ -1150,6 +1172,33 @@ def is_json_example(file):
         
         # It's a JSON example
         return True
+        
+    except Exception:
+        return False
+
+
+def is_yaml_file(file):
+    """
+    Check if a file is a YAML file.
+    Returns True if it's a YAML file, False otherwise.
+    """
+    try:
+        # Check if it's a YAML file
+        yaml_extensions = ['.yaml', '.yml']
+        if not any(file.name.lower().endswith(ext) for ext in yaml_extensions):
+            return False
+        
+        # Read the file content
+        content = file.read()
+        file.seek(0)  # Reset file pointer
+        
+        # Try to parse as YAML
+        try:
+            import yaml
+            yaml_data = yaml.safe_load(content.decode('utf-8'))
+            return yaml_data is not None
+        except (yaml.YAMLError, UnicodeDecodeError):
+            return False
         
     except Exception:
         return False
@@ -1200,6 +1249,42 @@ def convert_json_example_if_needed(file_path, services):
         return file_path
 
 
+def convert_yaml_to_json_schema_if_needed(file_path, services):
+    """
+    Convert YAML file to JSON Schema.
+    Returns the JSON Schema file path.
+    """
+    try:
+        # Check if it's a YAML file
+        yaml_extensions = ['.yaml', '.yml']
+        if not any(file_path.lower().endswith(ext) for ext in yaml_extensions):
+            return file_path
+        
+        # Read the file content
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Convert YAML to JSON Schema
+        converter_service = services.get('converter')
+        if converter_service:
+            # Generate schema from the YAML content
+            schema = converter_service.convert_yaml_to_json_schema(content, "GeneratedSchema")
+            
+            # Create a temporary schema file
+            import tempfile
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json', encoding='utf-8') as temp_schema:
+                json.dump(schema, temp_schema, indent=2)
+                schema_path = temp_schema.name
+            
+            return schema_path
+        else:
+            return file_path  # Service not available, return original path
+            
+    except Exception as e:
+        # If any error occurs, return the original file path
+        return file_path
+
+
 def process_mapping(source_file, target_file, services, source_case="Original", target_case="Original", reorder_attributes=False, min_match_threshold=20):
     try:
         # Create temporary files
@@ -1213,14 +1298,16 @@ def process_mapping(source_file, target_file, services, source_case="Original", 
         
         # --- Enhanced schema parsing logic for XSD, JSON Schema, and JSON Examples ---
         
-        # Check if source file is a JSON example and convert to schema if needed
+        # Check if source file is a JSON example or YAML and convert to schema if needed
         source_temp_path = convert_json_example_if_needed(source_temp_path, services)
+        source_temp_path = convert_yaml_to_json_schema_if_needed(source_temp_path, services)
         
-        # Parse source schema (XSD, JSON Schema, or converted JSON Example)
+        # Parse source schema (XSD, JSON Schema, or converted JSON Example/YAML)
         src_rows = parse_schema_file(source_temp_path, services)
         
-        # Check if target file is a JSON example and convert to schema if needed
+        # Check if target file is a JSON example or YAML and convert to schema if needed
         target_temp_path = convert_json_example_if_needed(target_temp_path, services)
+        target_temp_path = convert_yaml_to_json_schema_if_needed(target_temp_path, services)
         
         # Parse target schema (XSD, JSON Schema, or converted JSON Example)
         tgt_rows = []
