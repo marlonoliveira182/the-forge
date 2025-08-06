@@ -857,7 +857,7 @@ def show_converter_page(services):
         # Conversion options
         st.markdown("### ⚙️ Conversion Options")
         
-        if conversion_key == "json_to_schema":
+        if conversion_key in ["json_to_schema", "yaml_to_json_schema"]:
             schema_name = st.text_input(
                 "Schema Name",
                 value="GeneratedSchema",
@@ -917,7 +917,7 @@ def show_converter_page(services):
                         
                         # Prepare conversion parameters
                         conversion_params = {}
-                        if conversion_key == "json_to_schema":
+                        if conversion_key in ["json_to_schema", "yaml_to_json_schema"]:
                             conversion_params['schema_name'] = schema_name
                         elif conversion_key == "xml_to_xsd":
                             conversion_params['schema_name'] = schema_name
